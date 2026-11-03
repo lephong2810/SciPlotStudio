@@ -1,0 +1,7 @@
+numpy>=1.23
+pandas>=1.5
+matplotlib>=3.7
+scipy>=1.10
+openpyxl>=3.1
+streamlit>=1.30
+adjustText>=1.0

@@ -1,0 +1,18 @@
+{
+  "figsize": [11, 4.8],
+  "theme": "origin",
+  "font": "sans",
+  "fontsize": 12,
+  "tags": "(a)",
+  "layout": [["a", "b"]],
+  "panels": {
+    "a": {"type": "line", "data": "co_oxidation_conversion.csv", "x": "T_C", "y": "conversion",
+          "color": "sample", "palette": "pastel", "markers": "o", "ms": 5,
+          "xlabel": "Temperature [$^{o}$C]", "ylabel": "CO conversion efficiency [%]",
+          "xlim": [30, 140], "ylim": [-10, 110], "xstep": 20, "ystep": 20, "legend": "upper left"},
+    "b": {"type": "bar", "data": "co_oxidation_rate.csv", "x": "sample", "y": "rate", "stat": "identity",
+          "err_col": "sd", "gradient": "#F2A0A0,#F0D9A0", "edgecolor": "#666666", "width": 0.75,
+          "value_labels": true, "value_fmt": "{:.4g}", "rotate_x": 30, "note": "@ At 90$^{o}$C",
+          "xlabel": "", "ylabel": "CO conversion rate [mL/min$\\cdot$g$_{cat}$]", "ylim": [0, 20], "ystep": 5}
+  }
+}

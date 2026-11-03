@@ -1,0 +1,25 @@
+{
+  "title": "Figure 1. Ví dụ ghép hình (tương đương patchwork / cowplot)",
+  "figsize": [12, 9],
+  "theme": "classic",
+  "font": "sans",
+  "fontsize": 10,
+  "tags": "A",
+  "layout": [["A", "B", "C"],
+             ["D", "E", "E"]],
+  "widths": [1, 1, 1],
+  "heights": [1, 1.15],
+  "panels": {
+    "A": {"type": "pca", "data": "iris.csv", "group": "Species"},
+    "B": {"type": "volcano", "data": "de_results_demo.csv", "fc": "logFC", "p": "FDR",
+          "label": "gene", "top": 6, "legend": "upper left"},
+    "C": {"type": "box", "data": "toothgrowth_demo.csv", "x": "dose", "y": "len", "hue": "supp",
+          "stats_test": "t"},
+    "D": {"type": "line", "data": "catalyst_kinetics_demo.csv", "x": "time_min", "y": "conversion",
+          "color": "catalyst", "agg": "mean", "xlabel": "Time (min)", "ylabel": "Conversion (%)"},
+    "E": {"type": "heatmap", "data": "rnaseq_top20_demo.csv", "index": "gene", "scale": "row",
+          "annotation_col": "sample_annotation_demo.csv",
+          "annotation_colors": {"dex": {"trt": "orange", "untrt": "black"}},
+          "cutree_rows": 2, "cutree_cols": 2}
+  }
+}
