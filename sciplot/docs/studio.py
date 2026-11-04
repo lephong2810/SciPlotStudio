@@ -676,6 +676,11 @@ def _draw(G, ax):
     series = [dict(s, _idx=i) for i, s in enumerate(G.get("series", [])) if s.get("visible", True)]
     G = {**G, "series": series}
     items = [_series_data(G, s) for s in series]
+    seen = {}
+    for d in items:  # tên trùng (hai series cùng cột) → thêm (2), (3) để màu/nhãn không dính nhau
+        seen[d["label"]] = seen.get(d["label"], 0) + 1
+        if seen[d["label"]] > 1:
+            d["label"] = f"{d['label']} ({seen[d['label']]})"
     styles = [_style(G, i, s) for i, s in enumerate(series)]
     ax2 = handles = None
     generic = kind in ("line", "scatter", "linesymbol", "area", "column", "xps")
@@ -712,6 +717,32 @@ def _draw(G, ax):
         if G.get("title"):
             ax.set_title(G["title"])
     leg = _apply_legend(ax, G, handles if generic else None, ax2) if kind != "heatmap" else None
+    if kind == "spectra":  # tên mẫu ở đầu phổ: kéo được, ẩn được, đổi cỡ/màu được
+        o = G.get("opts") or {}
+        by_name = {d["label"]: s for d, s in zip(items, series)}
+        for t in list(ax.texts):
+            gid = t.get_gid() or ""
+            if not gid.startswith("slab:"):
+                continue
+            s_ = by_name.get(gid[5:])
+            if s_ is None:
+                continue
+            if s_.get("label_hide"):
+                t.remove()
+                continue
+            t.set_gid(f"slab:{s_['_idx']}")
+            if s_.get("label_size") or o.get("label_size"):
+                t.set_fontsize(float(s_.get("label_size") or o.get("label_size")))
+            if s_.get("label_color"):
+                t.set_color(s_["label_color"])
+            if s_.get("label_bold"):
+                t.set_fontweight("bold")
+            pos = s_.get("label_pos")
+            if pos:
+                t.set_transform(ax.transAxes)
+                t.set_position((float(pos[0]), float(pos[1])))
+                t.set_ha("left")
+                t.set_va("top")
     for t in G.get("texts", []):
         kw = dict(transform=ax.transAxes, ha="left", va="top", zorder=25, gid=t["id"])
         if t.get("fontsize"):

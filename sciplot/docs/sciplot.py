@@ -1148,7 +1148,7 @@ def spectra(df, x=None, y=None, sample=None, pairs=False, kind="xrd", normalize=
             xr = xmin if invert_x else xmax
             xr_in = xr + (0.02 * xspan if invert_x else -0.02 * xspan)
             yr = np.interp(xr_in, xv, yv + base)
-            ax.text(xr_in, yr + 0.12 * off, n, color=c, ha="right", va="bottom")
+            ax.text(xr_in, yr + 0.12 * off, n, color=c, ha="right", va="bottom", gid=f"slab:{n}")
     names = [p[0] for p in proc]
     # ký hiệu pha
     if phases:

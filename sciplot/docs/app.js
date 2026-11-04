@@ -968,6 +968,7 @@ function startDrag(id, e, h, x0, y0, clickSel) {
     mutate(() => {
       if (h.kind === "legend") { g.legend = g.legend || {}; g.legend.loc = [fx, fy]; }
       else if (String(h.id).startsWith("fit:")) { const si = g.series[+h.id.slice(4)]; if (si) si.fit_pos = [fx, fy]; }
+      else if (String(h.id).startsWith("slab:")) { const si = g.series[+h.id.slice(5)]; if (si) si.label_pos = [fx, fy]; }
       else { const t = g.texts.find(t => t.id === h.id); if (t) { t.x = fx; t.y = fy; } }
     });
   };
@@ -997,7 +998,7 @@ function graphDblClick(id, e) {
   if (!h) return pageDialog(g);
   const map = { xaxis: () => axisDialog("x", g), xlabel: () => axisDialog("x", g, "label"), yaxis: () => axisDialog("y", g), ylabel: () => axisDialog("y", g, "label"),
     y2axis: () => axisDialog("y2", g), y2label: () => axisDialog("y2", g, "label"), legend: () => legendDialog(g), legend_entry: () => plotDetails(g, h.index),
-    title: () => titleDialog(g), text: () => String(h.id).startsWith("fit:") ? plotDetails(g, +h.id.slice(4)) : textDialog(g, h.id), plot: () => plotDetails(g) };
+    title: () => titleDialog(g), text: () => String(h.id).startsWith("fit:") ? plotDetails(g, +h.id.slice(4)) : String(h.id).startsWith("slab:") ? sampleLabelDialog(g, +h.id.slice(5)) : textDialog(g, h.id), plot: () => plotDetails(g) };
   (map[h.kind] || (() => plotDetails(g)))();
 }
 function graphContext(id, e) {
@@ -1010,7 +1011,8 @@ function graphContext(id, e) {
     [g.legend && g.legend.show === false ? "Hiện chú giải" : "Ẩn chú giải", () => mutate(() => { g.legend = g.legend || {}; g.legend.show = g.legend.show === false; })],
     ["Tiêu đề…", () => titleDialog(g)], "-", ["Rescale", () => rescale()], ["Sao chép hình", () => copyImage()], ["Xuất hình…", () => exportDialog()],
   ];
-  if (h && h.kind === "text" && String(h.id).startsWith("fit:")) { const i = +h.id.slice(4); items.unshift(["Tuỳ chỉnh fit…", () => plotDetails(g, i)], ["Ẩn phương trình", () => mutate(() => { g.series[i].fit_eq = false; })], ["Xoá đường fit", () => mutate(() => { clearFit(g.series[i]); })], "-"); }
+  if (h && h.kind === "text" && String(h.id).startsWith("slab:")) { const i = +h.id.slice(5); items.unshift(["Sửa tên mẫu…", () => sampleLabelDialog(g, i)], ["Ẩn tên này", () => mutate(() => { g.series[i].label_hide = true; })], ["Đặt lại vị trí", () => mutate(() => { delete g.series[i].label_pos; })], ["Đặt lại vị trí mọi tên mẫu", () => mutate(() => g.series.forEach(x => { delete x.label_pos; }))], "-"); }
+  else if (h && h.kind === "text" && String(h.id).startsWith("fit:")) { const i = +h.id.slice(4); items.unshift(["Tuỳ chỉnh fit…", () => plotDetails(g, i)], ["Ẩn phương trình", () => mutate(() => { g.series[i].fit_eq = false; })], ["Xoá đường fit", () => mutate(() => { clearFit(g.series[i]); })], "-"); }
   else if (h && h.kind === "text") items.unshift(["Sửa chữ…", () => textDialog(g, h.id)], ["Xoá chữ này", () => mutate(() => { g.texts = g.texts.filter(t => t.id !== h.id); })], "-");
   if (["line", "scatter", "linesymbol", "area", "xps"].includes(g.kind)) items.splice(items.length - 4, 0, ["Fit tuyến tính / đa thức…", () => fitDialog(g)]);
   openPopup($("#ctxmenu"), items, e.clientX, e.clientY);
@@ -1022,16 +1024,20 @@ function rescale() {
 }
 function deleteSelected() {
   const g = activeGraph(); if (!g) return; const V = gview[g.id]; if (!V || !V.sel) return;
-  if (V.sel.kind === "text" && String(V.sel.id).startsWith("fit:")) mutate(() => { g.series[+V.sel.id.slice(4)].fit_eq = false; V.sel = null; });
+  if (V.sel.kind === "text" && String(V.sel.id).startsWith("slab:")) mutate(() => { g.series[+V.sel.id.slice(5)].label_hide = true; V.sel = null; });
+  else if (V.sel.kind === "text" && String(V.sel.id).startsWith("fit:")) mutate(() => { g.series[+V.sel.id.slice(4)].fit_eq = false; V.sel = null; });
   else if (V.sel.kind === "text") mutate(() => { g.texts = g.texts.filter(t => t.id !== V.sel.id); V.sel = null; });
   else if (V.sel.kind === "legend") mutate(() => { g.legend = g.legend || {}; g.legend.show = false; V.sel = null; });
   else if (V.sel.kind === "title") mutate(() => { g.title = ""; V.sel = null; });
 }
 function nudge(dx, dy) {
   const g = activeGraph(); if (!g) return false; const V = gview[g.id]; if (!V || !V.sel) return false;
-  if (V.sel.kind === "text" && String(V.sel.id).startsWith("fit:")) {
-    const si = g.series[+V.sel.id.slice(4)]; const h = V.hits.find(h => h.kind === "text" && h.id === V.sel.id); const A = V.axes[0];
-    mutate(() => { const cur = si.fit_pos || [(h.box[0] - A.box[0]) / (A.box[2] - A.box[0]), (A.box[3] - h.box[1]) / (A.box[3] - A.box[1])]; si.fit_pos = [+(cur[0] + dx).toFixed(4), +(cur[1] + dy).toFixed(4)]; }); return true;
+  const sid = String(V.sel.id || "");
+  if (V.sel.kind === "text" && (sid.startsWith("fit:") || sid.startsWith("slab:"))) {
+    const isFit = sid.startsWith("fit:"), key = isFit ? "fit_pos" : "label_pos";
+    const si = g.series[+sid.slice(isFit ? 4 : 5)]; const h = V.hits.find(h => h.kind === "text" && h.id === V.sel.id); const A = V.axes[0];
+    if (!si || !h) return false;
+    mutate(() => { const cur = si[key] || [(h.box[0] - A.box[0]) / (A.box[2] - A.box[0]), (A.box[3] - h.box[1]) / (A.box[3] - A.box[1])]; si[key] = [+(cur[0] + dx).toFixed(4), +(cur[1] + dy).toFixed(4)]; }); return true;
   }
   if (V.sel.kind === "text") { mutate(() => { const t = g.texts.find(t => t.id === V.sel.id); if (t) { t.x = +(t.x + dx).toFixed(4); t.y = +(t.y + dy).toFixed(4); } }); return true; }
   if (V.sel.kind === "legend") {
@@ -1264,7 +1270,8 @@ const KIND_OPTS = {
   spectra: [{ k: "kind", label: "Loại phổ", t: "sel", opts: [["xrd", "XRD (2θ)"], ["raman", "Raman"], ["ftir", "FTIR (đảo trục)"], ["xps", "XPS (đảo trục)"], ["uvvis", "UV-Vis"], ["pl", "PL"]] },
     { k: "normalize", label: "Chuẩn hoá mỗi phổ [0,1]", t: "bool" }, { k: "offset", label: "Khoảng cách giữa các phổ", t: "number", step: 0.05, ph: "tự động" },
     { k: "smooth", label: "Làm mượt (cửa sổ SG)", t: "number", step: 2, ph: "tắt" },
-    { k: "labels", label: "Tên mẫu", t: "sel", opts: [["right", "ghi ở đầu phải mỗi phổ"], ["legend", "trong chú giải"]] },
+    { k: "labels", label: "Tên mẫu", t: "sel", opts: [["right", "ghi trên đầu phải mỗi phổ (kéo được)"], ["legend", "trong chú giải"], ["none", "không hiện"]] },
+    { k: "label_size", label: "Cỡ chữ tên mẫu", t: "number", step: 0.5, ph: "theo hình" },
     { k: "first_on_top", label: "Mẫu đầu tiên nằm trên cùng", t: "bool" },
     { k: "phases", label: "Ký hiệu pha (JSON)", t: "text", ph: '{"CuO":[35.5,38.7]}' }, { k: "hkl", label: "Chỉ số hkl", t: "text", ph: "28.5:(111),33.1:(200)" }],
   lsv: [...ECHEM, { k: "reaction", label: "Phản ứng", t: "sel", opts: [["OER", "OER"], ["HER", "HER"], ["", "khác"]] }, { k: "j_mark", label: "Tính η tại |j| (mA cm⁻²)", t: "number", ph: "10" }],
@@ -1297,6 +1304,23 @@ const FIT_FIELDS = p => [
 ];
 const FIT_KEYS = ["fit", "fit_from", "fit_to", "fit_eq", "fit_extend", "fit_color", "fit_ls", "fit_lw", "fit_size", "fit_pos"];
 function clearFit(s) { for (const k of FIT_KEYS) delete s[k]; }
+function sampleLabelDialog(g, i) {
+  const s0 = g.series[i]; if (!s0) return;
+  const book = byId(g.book); const col = book.cols.find(c => c.name === s0.y) || { name: s0.y };
+  const v = { label: s0.label || "", label_size: s0.label_size ?? null, label_color: s0.label_color || null, label_bold: !!s0.label_bold, show: !s0.label_hide };
+  dialog({ title: "Tên mẫu", values: v, fields: [
+    { k: "label", label: "Nội dung", t: "text", ph: dispName(col), help: "Để trống = theo Long Name của cột. Chỉ số: CeO$_2$, Cu$^{2+}$" },
+    { k: "label_size", label: "Cỡ chữ", t: "number", step: 0.5, ph: "theo hình" },
+    { k: "label_color", label: "Màu", t: "color", auto: true, swatches: () => [{ name: "Bài báo", colors: PAL.paper.colors }, { name: "Trung tính", colors: NEUTRAL }] },
+    { k: "label_bold", label: "In đậm", t: "bool" }, { k: "show", label: "Hiện tên này", t: "bool" }],
+    buttons: [{ text: "Đặt lại vị trí", onClick: (vv, close) => { mutate(() => { delete s0.label_pos; }); close(); } }],
+    extra: '<p class="note">Kéo tên mẫu trên hình để di chuyển, hoặc bấm chọn rồi dùng phím mũi tên để nhích (Shift = bước lớn).</p>',
+    onOk: vv => mutate(() => {
+      for (const [k, val] of [["label", vv.label], ["label_size", vv.label_size], ["label_color", vv.label_color]]) { if (val === null || val === "") delete s0[k]; else s0[k] = val; }
+      if (vv.label_bold) s0.label_bold = true; else delete s0.label_bold;
+      if (vv.show) delete s0.label_hide; else s0.label_hide = true;
+    }) });
+}
 function fitDialog(g) {
   g = g || activeGraph(); if (!g) return status("Hãy mở một graph trước");
   if (!["line", "scatter", "linesymbol", "area", "xps"].includes(g.kind)) {
@@ -1368,7 +1392,7 @@ function plotDetails(g, focusIndex) {
       const pal = curPal();
       return `<div class="pdgrid"><div><label class="note" style="display:block;margin:0 0 3px">Bảng màu cho cả hình</label><select data-pdpal style="width:100%;margin-bottom:4px">${PALETTE_DEFS.map(p => `<option value="${p.id}" ${p.id === work.palette ? "selected" : ""}>${esc(p.name)}</option>`).join("")}</select>
         <div class="strip big" style="margin-bottom:8px">${palColors(work.palette, Math.max(work.series.length, PAL[work.palette] && PAL[work.palette].seq ? work.series.length : 8)).map(c => `<i style="background:${c}"></i>`).join("")}</div>
-        <div class="slist">${work.series.map((x, i) => `<div class="si${i === cur ? " on" : ""}" data-i="${i}"><span class="sw" style="background:${x.color || pal[i % pal.length]}"></span>${esc(plainMath(x.label || dispName(book.cols.find(c => c.name === x.y) || { name: x.y })))}</div>`).join("") || '<div class="si">(chưa có series)</div>'}</div>
+        <div class="slist">${work.series.map((x, i) => `<div class="si${i === cur ? " on" : ""}" data-i="${i}"><span class="sw" style="background:${x.color || pal[i % pal.length]}"></span>${esc(plainMath(x.label || dispName(book.cols.find(c => c.name === x.y) || { name: x.y })))}${work.series.some((o, j) => j !== i && o.y === x.y) ? ' <span title="Series này trùng cột với series khác — đổi Cột Y" style="color:#b00020">⚠</span>' : ""}</div>`).join("") || '<div class="si">(chưa có series)</div>'}</div>
         <div class="sbtns"><button class="btn" data-sa="add">+ Thêm</button><button class="btn" data-sa="del">Xoá</button><button class="btn" data-sa="up">▲</button><button class="btn" data-sa="down">▼</button></div>
         <div class="sbtns"><button class="btn" data-sa="applyall" title="Áp kiểu ký hiệu/nét/cỡ của series này cho mọi series">Áp kiểu cho tất cả</button></div></div>
         <div>${work.series.length ? `<div class="fgrid">${SF.map(f => fieldHTML(f, sv)).join("")}</div>` : ""}</div></div>`;
@@ -1381,7 +1405,12 @@ function plotDetails(g, focusIndex) {
       $$("[data-sa]", root).forEach(b => b.onclick = () => {
         seriesTab.read(root);
         const a = b.dataset.sa;
-        if (a === "add") { const yc = book.cols.find(c => c.desig === "Y" && !work.series.some(s => s.y === c.name)) || book.cols[book.cols.length - 1]; const base = work.series[cur] || {}; work.series.push({ x: base.x || (book.cols.find(c => c.desig === "X") || {}).name, y: yc.name }); cur = work.series.length - 1; }
+        if (a === "add") {
+          const yc = book.cols.find(c => c.desig === "Y" && !work.series.some(s => s.y === c.name)) || book.cols.find(c => colIsNumeric(c) && c.desig !== "X" && !work.series.some(s => s.y === c.name));
+          if (!yc) { alert("Mọi cột số trong workbook đã được vẽ. Thêm cột mới vào workbook trước, hoặc đổi 'Cột Y' của một series."); return; }
+          let x = null; const yi = book.cols.indexOf(yc); for (let k = yi - 1; k >= 0; k--) if (book.cols[k].desig === "X") { x = book.cols[k].name; break; }
+          work.series.push({ x: x || (work.series[cur] || {}).x, y: yc.name }); cur = work.series.length - 1;
+        }
         if (a === "del" && work.series.length) { work.series.splice(cur, 1); cur = Math.max(0, cur - 1); }
         if (a === "up" && cur > 0) { [work.series[cur - 1], work.series[cur]] = [work.series[cur], work.series[cur - 1]]; cur--; }
         if (a === "down" && cur < work.series.length - 1) { [work.series[cur + 1], work.series[cur]] = [work.series[cur], work.series[cur + 1]]; cur++; }
