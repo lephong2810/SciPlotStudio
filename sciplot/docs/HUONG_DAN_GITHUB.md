@@ -1,66 +1,70 @@
-# Đưa SciPlot Web lên GitHub Pages
+# SciPlot Studio: đưa lên GitHub, cài như app, cách dùng
 
-Thư mục `docs/` là một trang web tĩnh hoàn chỉnh. Python (numpy, pandas, matplotlib, scipy) chạy ngay trong trình duyệt nhờ Pyodide, nên không cần máy chủ. Dữ liệu người dùng tải lên chỉ nằm trong trình duyệt của họ, không gửi đi đâu.
+Thư mục `docs/` là một trang web tĩnh hoàn chỉnh. Python (numpy, pandas, matplotlib, scipy) chạy ngay trong trình duyệt nhờ Pyodide, nên không cần máy chủ. Dữ liệu người dùng mở chỉ nằm trong trình duyệt của họ, không gửi đi đâu.
 
-## Các bước (khoảng 5 phút)
+- `index.html`: **SciPlot Studio**, giao diện kiểu Origin (worksheet, bấm đúp để chỉnh, kéo-thả).
+- `simple.html`: bản đơn giản dạng form, mở từ menu Help.
 
-1. Tạo repository mới trên GitHub, ví dụ `sciplot`, chọn **Public**.
-2. Đưa toàn bộ thư mục `sciplot/` lên repo. Có hai cách:
-   - **Kéo-thả:** trên trang repo chọn *Add file → Upload files*, kéo cả thư mục vào rồi bấm *Commit*.
-   - **Dòng lệnh:**
-     ```bash
-     cd sciplot
-     git init && git add . && git commit -m "SciPlot"
-     git branch -M main
-     git remote add origin https://github.com/<tài-khoản>/sciplot.git
-     git push -u origin main
-     ```
-3. Vào repo, chọn **Settings → Pages**:
-   - *Source*: **Deploy from a branch**
-   - *Branch*: **main**, thư mục **/docs**, rồi bấm **Save**.
-4. Đợi 1–2 phút. Trang sẽ có địa chỉ `https://<tài-khoản>.github.io/sciplot/`.
+## Cập nhật lên repo `figures` đang có
 
-## Khi sửa `sciplot.py`
+Trong repo hiện tại, trang nằm ở `sciplot/docs/`, và file `index.html` ở thư mục gốc đã chuyển hướng vào đó. Vì vậy chỉ cần thay nội dung thư mục:
 
-Bản web dùng một bản sao của `sciplot.py` nằm trong `docs/`. Sau mỗi lần sửa, chạy lệnh sau rồi commit và push lại:
+1. Giải nén `sciplot.zip` mới.
+2. Trên GitHub, mở thư mục `sciplot/docs` của repo, chọn **Add file → Upload files**, rồi kéo **toàn bộ nội dung** thư mục `docs/` mới vào (gồm cả các thư mục con `icons`, `fonts`, `wheels`, `examples`). File trùng tên sẽ được ghi đè.
+3. Bấm **Commit changes** và đợi 1–2 phút.
+
+Địa chỉ trang vẫn là `https://lephong2810.github.io/figures/`.
+
+## Khi sửa code
+
+Sau khi sửa `sciplot.py` hoặc file trong `docs/`, chạy:
 ```bash
 python build_docs.py
 ```
+rồi push lại. Lệnh này đánh số phiên bản mới, để app đã cài tự nhận bản cập nhật. Nếu không chạy, máy đã cài app có thể vẫn dùng bản cũ.
+
+## Cài như một app trên MacBook
+
+- **Safari (macOS 14 Sonoma trở lên):** mở trang, chọn menu **File → Add to Dock…**
+- **Chrome / Edge:** bấm biểu tượng cài đặt ở cuối thanh địa chỉ (hoặc menu ⋮ → *Cast, save and share → Install page as app*).
+- Hoặc trong SciPlot: menu **File → Cài SciPlot như một app**.
+
+Sau lần mở đầu tiên có mạng (tải khoảng 30–40 MB), app chạy được cả khi không có Internet. Khi có bản mới, thanh trạng thái sẽ nhắc tải lại trang.
+
+## Cách dùng: các thao tác giống Origin
+
+| Việc cần làm | Thao tác |
+|---|---|
+| Nhập dữ liệu | **File → Nhập dữ liệu** (Excel/CSV/TXT), kéo-thả file vào cửa sổ, hoặc dán thẳng (Ctrl/⌘ V). Dòng tên cột thành **Long Name**, dòng đơn vị thành **Units** |
+| Đặt kiểu cột | Chuột phải lên tiêu đề cột → X / Y / Y Error / Label / Disregard |
+| Vẽ | Bấm tiêu đề cột Y (Ctrl/Shift để chọn nhiều) → menu **Plot** hoặc nút trên thanh công cụ. Mỗi cột Y dùng cột X gần nhất bên trái; cột Y Error ngay bên phải thành thanh sai số |
+| Dữ liệu dạng dài (có cột tên mẫu) | Trang tự đề nghị **tách theo nhóm** (Unstack), hoặc dùng menu Column → Tách theo nhóm |
+| Chỉnh trục | **Bấm đúp vào trục** để chỉnh: khoảng From/To, bước tick, số tick phụ, log, đảo trục, hướng tick, cỡ chữ, số chữ số thập phân |
+| Sửa tên trục | Bấm đúp vào nhãn trục. Chỉ số trên: `$^{o}$C`, `cm$^{-2}$`; chỉ số dưới: `g$_{cat}$`; chữ Hy Lạp: `$\eta$` |
+| Màu, ký hiệu, nét từng đường | Bấm đúp vào tên series trong chú giải, hoặc **F4** (Plot Details) |
+| Trục Y bên phải | Plot Details → chọn series → *Vẽ theo trục Y bên phải* |
+| Chú giải, chữ | **Kéo** để di chuyển; mũi tên bàn phím để dịch từng chút (Shift = bước lớn); bấm đúp để sửa |
+| Thêm chữ, đường ngang/dọc | Chọn công cụ trên thanh công cụ rồi bấm vào hình |
+| Phóng to | Công cụ kính lúp → kéo khung chọn; **Ctrl/⌘ R** để trở lại |
+| Cỡ hình, font, độ dày khung | Bấm đúp vào vùng trống ngoài hình, hoặc Graph → Trang & khung |
+| Mọi hình cùng kiểu | Graph → **Copy Format** / **Paste Format**, hoặc **Lưu làm template** để dùng lại |
+| Tính cột mới | Chọn cột → **Ctrl/⌘ Q** (Set Column Values), ví dụ `col(B)/0.196`, `log10(abs(col(B)))` |
+| Xuất hình | **Ctrl/⌘ E**: PNG/TIFF 300–1200 dpi, PDF/SVG vector. Edit → Sao chép hình để dán vào PowerPoint |
+| Figure nhiều ô | File → Ghép nhiều hình thành 1 figure (a)(b)(c) |
+| Lưu để làm tiếp | **Ctrl/⌘ S** lưu file `.sciplot.json`; File → Mở project để mở lại. Trình duyệt cũng tự lưu tạm phiên gần nhất |
+| Hoàn tác | Ctrl/⌘ Z, làm lại Ctrl/⌘ Y |
 
 ## Thử trên máy trước khi đưa lên
 
-Không mở `index.html` bằng cách nhấp đúp (dạng `file://`), vì trình duyệt sẽ chặn việc nạp `sciplot.py`. Thay vào đó, chạy:
+Không mở `index.html` bằng cách nhấp đúp (dạng `file://`), vì trình duyệt sẽ chặn việc nạp file Python. Thay vào đó, chạy:
 ```bash
 cd docs
 python -m http.server 8000
 ```
 rồi mở `http://localhost:8000`.
 
-## Lưu ý
+## Ghi chú kỹ thuật
 
-- **Lần mở đầu tiên** trang tải khoảng 30–40 MB (Python và các thư viện), mất 10–60 giây tuỳ mạng. Từ lần sau, trình duyệt dùng bản đã lưu nên mở nhanh hơn nhiều.
-- **Trình duyệt hỗ trợ:** Chrome, Edge, Firefox, Safari bản mới. Máy yếu hoặc điện thoại vẫn chạy được, nhưng chậm hơn.
-- **Font:** bản web dùng Liberation Sans/Serif, có kích thước chữ tương đương Arial/Times New Roman và giấy phép SIL OFL (xem `fonts/LICENSE-Liberation.txt`). Bản desktop dùng Arial/Times thật nếu máy có cài.
-- **Các tệp ngoài:** trang nạp Pyodide và SheetJS (thư viện đọc Excel) từ CDN jsDelivr, nên cần có Internet khi mở trang.
-
-## Cách trang xử lý file Excel
-
-Việc đọc file diễn ra hoàn toàn trong trình duyệt, bằng SheetJS:
-
-| Tình huống | Trang xử lý thế nào |
-|---|---|
-| File `.xlsx`, `.xls`, `.xlsm`, `.ods` | Đọc trực tiếp, không cần lưu lại thành CSV |
-| Nhiều sheet | Tự chọn sheet có nhiều ô số nhất (bỏ qua sheet ghi chú). Muốn đổi thì chọn lại ở ô *Sheet* |
-| Dòng ghi chú ở đầu (vd "LSV 5 mV/s, 1 M KOH") | Tự bỏ các dòng chỉ có 1 ô chữ. Có thể đặt thêm *Bỏ qua … dòng đầu* |
-| Tiêu đề nhiều dòng: tên cột + đơn vị (+ ghi chú) kiểu Origin | *Số dòng tiêu đề = tự nhận*: gộp các dòng chữ ở đầu, vd `E` + `V vs RHE` → cột `E V vs RHE`. Có thể chọn cố định 1/2/3 dòng |
-| Tên cột trùng nhau | Tự thêm hậu tố `_2`, `_3` |
-| Ô trống, dòng/cột trống | Bỏ qua |
-| Số do công thức tính ra | Lấy giá trị đã tính (giá trị Excel lưu lần lưu file gần nhất) |
-| Số bị lưu dạng chữ kiểu "1,23" | Chọn *Dấu thập phân = phẩy* để đổi thành số |
-| Cột chữ (tên mẫu, nhóm) | Giữ nguyên, dùng để tô màu hoặc nhóm. Trang báo rõ cột nào không phải số |
-
-Ngoài Excel, trang còn đọc được:
-- **CSV/TXT xuất từ thiết bị:** tự nhận dấu phân cách (tab, `;`, `,`, khoảng trắng) và bảng mã (UTF-8, UTF-16, Windows-1258).
-- **Dữ liệu dán thẳng từ Excel/Origin:** bôi đen vùng dữ liệu → Ctrl+C → dán vào ô *Dán từ Excel*.
-
-Bảng dạng rộng (một cột x, mỗi mẫu một cột y) cũng dùng được trực tiếp cho Line, XRD, LSV, Tafel, CV, Nyquist và Tauc. Nếu là cặp cột x1, y1, x2, y2… như file xuất từ Origin, chọn *Dạng bảng → cặp cột*.
+- Hình được vẽ bằng matplotlib, nên file xuất ra giống hệt hình xem trên màn hình. Mỗi lần chỉnh, hình được vẽ lại sau khoảng 0,2–1 giây.
+- Font dùng Liberation Sans/Serif (kích thước chữ tương đương Arial/Times New Roman, giấy phép SIL OFL).
+- Pyodide và SheetJS được tải từ CDN jsDelivr ở lần đầu, sau đó lưu trong bộ nhớ của app.

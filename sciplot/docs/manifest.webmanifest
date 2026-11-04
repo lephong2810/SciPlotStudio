@@ -1,0 +1,16 @@
+{
+  "name": "SciPlot Studio",
+  "short_name": "SciPlot",
+  "description": "Vẽ và chỉnh sửa hình khoa học kiểu Origin, chạy trong trình duyệt.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#e9ecf1",
+  "theme_color": "#2b3a55",
+  "lang": "vi",
+  "icons": [
+    {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}

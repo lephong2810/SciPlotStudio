@@ -1,0 +1,866 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SciPlot Web</title>
+<meta name="description" content="Vẽ hình khoa học chuẩn bài báo (XRD, LSV, Tafel, BET, PCA, heatmap…) ngay trong trình duyệt, dữ liệu không rời khỏi máy.">
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --ink:#1d2330; --muted:#5c6577; --line:#dfe3ea; --accent:#b4233c;
+  --accent-ink:#ffffff; --soft:#f1f3f7; --ok:#2e7d4f; --warn:#a15c00; --err:#b00020; --code:#f3f4f7;
+  --radius:10px; --shadow:0 1px 2px rgba(20,30,50,.06),0 4px 14px rgba(20,30,50,.05);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#14171d; --panel:#1c2028; --ink:#e7eaf0; --muted:#9aa3b5; --line:#2e3442; --accent:#e0566c;
+    --soft:#232835; --code:#232835; --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#14171d; --panel:#1c2028; --ink:#e7eaf0; --muted:#9aa3b5; --line:#2e3442; --accent:#e0566c;
+  --soft:#232835; --code:#232835; --shadow:none;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans",Arial,sans-serif}
+header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;padding:16px 20px 10px;border-bottom:1px solid var(--line);background:var(--panel)}
+header h1{margin:0;font-size:20px;letter-spacing:.2px}
+header h1 b{color:var(--accent)}
+header p{margin:0;color:var(--muted);font-size:13px}
+#status{margin-left:auto;font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:8px}
+#status .dot{width:9px;height:9px;border-radius:50%;background:var(--warn);display:inline-block}
+#status.ready .dot{background:var(--ok)} #status.error .dot{background:var(--err)}
+main{display:grid;grid-template-columns:minmax(300px,380px) minmax(0,1fr);gap:16px;padding:16px 20px 40px;max-width:1600px;margin:0 auto}
+@media (max-width:900px){main{grid-template-columns:minmax(0,1fr);padding:12px 16px 32px}}
+main>section{min-width:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 14px 10px;margin-bottom:14px}
+.card h2{font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:0 0 10px;font-weight:650}
+label.f{display:block;margin:0 0 9px}
+label.f>span{display:block;font-size:12.5px;color:var(--muted);margin-bottom:3px}
+input[type=text],input[type=number],select,textarea{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--ink);font:inherit}
+textarea{font:12px/1.35 ui-monospace,Menlo,Consolas,monospace;min-height:90px;resize:vertical}
+input[type=color]{width:44px;height:28px;border:1px solid var(--line);border-radius:6px;background:none;padding:1px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.chk{display:flex;align-items:center;gap:7px;margin:0 0 8px;font-size:13.5px}
+.chk input{margin:0}
+.btn{appearance:none;border:1px solid var(--line);background:var(--soft);color:var(--ink);padding:7px 12px;border-radius:7px;font:inherit;cursor:pointer}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btns{display:flex;flex-wrap:wrap;gap:6px}
+.tabs{display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap}
+.tabs button{flex:1;border:1px solid var(--line);background:var(--soft);color:var(--muted);padding:6px 6px;border-radius:7px;cursor:pointer;font:inherit;font-size:12.5px}
+.tabs button.on{background:var(--panel);color:var(--ink);border-color:var(--accent);box-shadow:inset 0 -2px 0 var(--accent)}
+.hint{font-size:12px;color:var(--muted);margin:2px 0 8px}
+.multi{max-height:150px;overflow:auto;border:1px solid var(--line);border-radius:7px;padding:4px 8px}
+.multi label{display:flex;gap:6px;align-items:center;font-size:13px;margin:2px 0}
+details.more>summary{cursor:pointer;color:var(--muted);font-size:12.5px;margin:4px 0 8px}
+#typegrid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+#typegrid button{text-align:left;border:1px solid var(--line);background:var(--soft);color:var(--ink);padding:6px 8px;border-radius:7px;cursor:pointer;font:inherit;font-size:12.5px;line-height:1.25}
+#typegrid button.on{border-color:var(--accent);background:var(--panel);box-shadow:inset 3px 0 0 var(--accent)}
+#typegrid .grp{grid-column:1/-1;font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:6px 0 0}
+.preview{display:flex;align-items:center;min-height:420px;background:#fff;border-radius:8px;border:1px solid var(--line);overflow:auto;padding:10px}
+.preview img{max-width:100%;height:auto;display:block;margin:0 auto}
+.preview .ph{margin:0 auto}
+.preview .ph{color:#777;text-align:center;font-size:13.5px;max-width:420px}
+#err{display:none;white-space:pre-wrap;font:12px/1.4 ui-monospace,Menlo,Consolas,monospace;color:var(--err);background:var(--soft);border-radius:8px;padding:10px;margin-top:10px;max-height:220px;overflow:auto}
+table.data{border-collapse:collapse;font-size:12px;width:100%}
+table.data th,table.data td{border-bottom:1px solid var(--line);padding:3px 6px;text-align:left;white-space:nowrap}
+table.data th{color:var(--muted);font-weight:600;position:sticky;top:0;background:var(--panel)}
+.tablewrap{max-height:260px;overflow:auto;max-width:100%;border:1px solid var(--line);border-radius:7px}
+pre.code{background:var(--code);border-radius:8px;padding:10px;overflow:auto;font:12px/1.45 ui-monospace,Menlo,Consolas,monospace;margin:0}
+.badge{display:inline-block;font-size:11.5px;border:1px solid var(--line);border-radius:20px;padding:1px 8px;color:var(--muted);margin-left:6px}
+.drop{border:1.5px dashed var(--line);border-radius:9px;padding:12px;text-align:center;color:var(--muted);cursor:pointer;margin-bottom:8px}
+.drop.over{border-color:var(--accent);color:var(--ink)}
+.drop input{display:none}
+footer{color:var(--muted);font-size:12px;text-align:center;padding:0 16px 24px}
+.loader{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Sci<b>Plot</b> Web</h1>
+  <p>Vẽ hình khoa học chuẩn bài báo ngay trong trình duyệt. Dữ liệu không rời khỏi máy của bạn.</p>
+  <div id="status"><span class="dot"></span><span id="statustext">Đang tải Python…</span></div>
+</header>
+
+<main>
+<section>
+  <div class="card">
+    <h2>1. Dữ liệu</h2>
+    <div class="tabs" id="srctabs">
+      <button data-src="file" class="on">Tải file</button>
+      <button data-src="paste">Dán từ Excel</button>
+      <button data-src="sample">Dữ liệu mẫu</button>
+    </div>
+    <div id="src-file">
+      <div class="drop" id="drop"><input type="file" id="file" accept=".csv,.tsv,.txt,.dat,.xlsx,.xls,.xlsm,.ods">
+        Kéo-thả hoặc <u>chọn file</u><br><small>Excel (.xlsx .xls .ods), CSV, TSV, TXT</small></div>
+      <div id="xlsopts" style="display:none">
+        <label class="f"><span>Sheet</span><select id="sheet"></select></label>
+      </div>
+
+
+    </div>
+    <div id="src-paste" style="display:none">
+      <textarea id="pastebox" placeholder="Bôi đen vùng dữ liệu trong Excel/Origin (gồm dòng tiêu đề) → Ctrl+C → dán vào đây"></textarea>
+      <div class="btns" style="margin-top:6px"><button class="btn" id="pastebtn">Dùng dữ liệu đã dán</button></div>
+    </div>
+    <div id="src-sample" style="display:none">
+      <label class="f"><span>Chọn bộ dữ liệu mẫu</span><select id="samplesel"></select></label>
+    </div>
+<div class="row">
+        <label class="f"><span>Bỏ qua … dòng đầu</span><input type="number" id="skip" value="0" min="0"></label>
+        <label class="f"><span>Số dòng tiêu đề</span><select id="hdr"><option value="auto">tự nhận</option><option value="1">1</option><option value="2">2 (tên + đơn vị)</option><option value="3">3</option><option value="0">không có</option></select></label>
+      </div>
+      <div id="txtopts" class="row" title="Chỉ áp dụng cho CSV/TXT và dữ liệu dán">
+        <label class="f"><span>Phân cách cột</span><select id="sep"><option value="auto">tự nhận</option><option value="tab">Tab</option><option value="comma">dấu phẩy ,</option><option value="semicolon">chấm phẩy ;</option><option value="space">khoảng trắng</option></select></label>
+        <label class="f"><span>Dấu thập phân</span><select id="dec"><option value=".">chấm (1.23)</option><option value=",">phẩy (1,23)</option></select></label>
+      </div>
+    <div id="datainfo" class="hint"></div>
+  </div>
+
+  <div class="card">
+    <h2>2. Loại hình</h2>
+    <div id="typegrid"></div>
+  </div>
+
+  <div class="card">
+    <h2>3. Tham số <span class="badge" id="typebadge"></span></h2>
+    <div id="form"></div>
+    <details class="more"><summary>Nhãn, trục, chú giải, màu</summary><div id="form-common"></div></details>
+  </div>
+
+  <div class="card">
+    <h2>4. Giao diện</h2>
+    <label class="f"><span>Khung hình</span><select id="theme">
+      <option value="origin">origin – khung kín 4 cạnh, tick ra ngoài</option>
+      <option value="origin-in">origin-in – khung kín, tick vào trong 4 cạnh</option>
+      <option value="classic">classic – chỉ trục trái/dưới (ggplot2)</option>
+      <option value="bw">bw – khung + lưới</option>
+      <option value="minimal">minimal</option></select></label>
+    <div class="row3">
+      <label class="f"><span>Font</span><select id="font"><option value="sans">Sans (kiểu Arial)</option><option value="serif">Serif (kiểu Times)</option></select></label>
+      <label class="f"><span>Cỡ chữ</span><input type="number" id="fontsize" value="11" min="6" max="24"></label>
+      <label class="f"><span>Bảng màu</span><select id="palette"></select></label>
+    </div>
+    <div class="row">
+      <label class="f"><span>Rộng (inch)</span><input type="number" id="w" value="5" step="0.5" min="1.5"></label>
+      <label class="f"><span>Cao (inch)</span><input type="number" id="h" value="4" step="0.5" min="1.5"></label>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="card">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+      <h2 style="margin:0">Hình</h2>
+      <label class="chk" style="margin:0"><input type="checkbox" id="auto" checked> Tự vẽ lại khi đổi tham số</label>
+      <button class="btn primary" id="drawbtn" style="margin-left:auto" disabled>Vẽ hình</button>
+    </div>
+    <div class="preview" id="preview"><div class="ph">Lần đầu mở trang cần tải khoảng 30–40 MB (Python + numpy, pandas, matplotlib, scipy); các lần sau trình duyệt dùng bản đã lưu.<br><br>Trong lúc chờ, hãy chọn dữ liệu bên trái.</div></div>
+    <div id="err"></div>
+  </div>
+
+  <div class="card" id="rescard" style="display:none">
+    <h2>Kết quả tính từ dữ liệu</h2>
+    <div class="tablewrap"><table class="data" id="restable"></table></div>
+    <div class="btns" style="margin-top:8px"><button class="btn" id="rescsv">Tải bảng kết quả (.csv)</button></div>
+  </div>
+
+  <div class="card">
+    <h2>Xuất hình</h2>
+    <div class="row3">
+      <label class="f"><span>DPI (PNG/TIFF)</span><select id="dpi"><option>300</option><option selected>600</option><option>1200</option><option>150</option></select></label>
+      <label class="f"><span>Tên file</span><input type="text" id="fname" value="figure"></label>
+      <label class="chk" style="align-self:end"><input type="checkbox" id="transp"> Nền trong suốt</label>
+    </div>
+    <div class="btns">
+      <button class="btn" data-fmt="png">⬇ PNG</button><button class="btn" data-fmt="pdf">⬇ PDF</button>
+      <button class="btn" data-fmt="svg">⬇ SVG</button><button class="btn" data-fmt="tiff">⬇ TIFF</button>
+    </div>
+    <p class="hint">PDF và SVG là ảnh vector, chữ vẫn sửa được trong Illustrator/Inkscape/PowerPoint.</p>
+  </div>
+
+  <div class="card">
+    <h2>Xem dữ liệu</h2>
+    <div class="tablewrap"><table class="data" id="datatable"></table></div>
+  </div>
+
+  <div class="card">
+    <h2>Code Python tương ứng</h2>
+    <pre class="code" id="code"># Vẽ một hình để xem code</pre>
+    <div class="btns" style="margin-top:8px"><button class="btn" id="copycode">Sao chép</button></div>
+    <p class="hint">Chạy được với <code>sciplot.py</code> trên máy tính (bản desktop), cho kết quả giống hệt.</p>
+  </div>
+</section>
+</main>
+<footer>SciPlot · chạy hoàn toàn trên trình duyệt bằng <a href="https://pyodide.org" target="_blank" rel="noopener">Pyodide</a> · đọc Excel bằng <a href="https://sheetjs.com" target="_blank" rel="noopener">SheetJS</a></footer>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+"use strict";
+const PYODIDE_URL = "https://cdn.jsdelivr.net/pyodide/v0.27.2/full/";
+const FONT_FILES = ["Sans", "Serif"].flatMap(f => ["Regular", "Bold", "Italic", "BoldItalic"].map(s => `Liberation${f}-${s}.ttf`));
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+
+/* ------------------------------------------------------------------ Python bridge */
+let py = null, glue = null, ready = false;
+function callPy(fn, ...args) {
+  if (window.__MOCK_PY__) return window.__MOCK_PY__(fn, args);
+  return glue[fn](...args);
+}
+function setStatus(text, cls) {
+  $("#statustext").textContent = text;
+  $("#status").className = cls || "";
+}
+async function boot() {
+  try {
+    if (!window.__MOCK_PY__) {
+      setStatus("Đang tải Python (Pyodide)…");
+      await new Promise((ok, bad) => {
+        const s = document.createElement("script");
+        s.src = PYODIDE_URL + "pyodide.js"; s.onload = ok; s.onerror = () => bad(new Error("Không tải được Pyodide"));
+        document.head.appendChild(s);
+      });
+      py = await loadPyodide({ indexURL: PYODIDE_URL });
+      setStatus("Đang tải numpy, pandas, matplotlib, scipy…");
+      await py.loadPackage(["numpy", "pandas", "matplotlib", "scipy", "micropip"]);
+      try {  // gói nhỏ giúp nhãn không đè nhau; thiếu cũng không sao
+        await py.runPythonAsync("import micropip\nawait micropip.install('adjustText')");
+      } catch (e) { console.warn("adjustText:", e); }
+      setStatus("Đang nạp font và SciPlot…");
+      py.FS.mkdirTree("fonts");
+      await Promise.all(FONT_FILES.map(async f => {
+        try { const r = await fetch("fonts/" + f); if (r.ok) py.FS.writeFile("fonts/" + f, new Uint8Array(await r.arrayBuffer())); }
+        catch (e) { console.warn("font", f, e); }
+      }));
+      for (const f of ["sciplot.py", "glue.py"]) {
+        const r = await fetch(f + "?v=" + Date.now());
+        if (!r.ok) throw new Error("Không tải được " + f + " (hãy mở trang qua GitHub Pages hoặc một web server, không mở trực tiếp file://)");
+        py.FS.writeFile(f, await r.text());
+      }
+      py.runPython("import sys; sys.path.insert(0, '.')\nimport glue");
+      glue = py.pyimport("glue");
+    }
+    ready = true;
+    setStatus("Sẵn sàng", "ready");
+    $("#drawbtn").disabled = false;
+    for (const [name, p] of Object.entries(pending)) { await ingestPending(name, p); }
+    if (dataInfo) draw();
+  } catch (e) {
+    setStatus("Lỗi khi khởi động", "error");
+    showError(String(e && e.message || e));
+  }
+}
+
+/* ------------------------------------------------------------------ data ingest */
+let dataInfo = null, aux = {}, workbook = null, currentFileName = "data.csv";
+const pending = {};  // dữ liệu chọn trước khi Python sẵn sàng
+
+function csvEscape(v) {
+  if (v === null || v === undefined) return "";
+  if (v instanceof Date) v = v.toISOString();
+  const s = String(v);
+  return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+const NUMRE = /^[-+]?(\d+([.,]\d*)?|[.,]\d+)([eE][-+]?\d+)?$/;
+const isNum = v => typeof v === "number" || (typeof v === "string" && NUMRE.test(v.trim()));
+const filled = r => r.filter(c => c !== "" && c !== null && c !== undefined).length;
+function aoaToCsv(aoa, skip, nhdr, dec = ".") {
+  let rows = aoa.slice(skip).filter(r => r && filled(r) > 0);
+  if (!rows.length) throw new Error("Không còn dữ liệu sau khi bỏ qua các dòng đầu.");
+  const width = Math.max(...rows.map(r => r.length));
+  let header, body, auto = nhdr === "auto";
+  if (auto) {
+    // bỏ các dòng ghi chú ở đầu (chỉ 1 ô có chữ, trong khi bảng có nhiều cột)
+    while (rows.length > 2 && width > 1 && filled(rows[0]) <= 1 && filled(rows[1]) > 1) rows = rows.slice(1);
+    // dòng tiêu đề = các dòng đầu không phải số (tên, đơn vị, ghi chú kiểu Origin), tối đa 3
+    nhdr = 0;
+    while (nhdr < 3 && nhdr < rows.length - 1) {
+      const r = rows[nhdr], n = filled(r), k = r.filter(isNum).length;
+      if (n && k / n < 0.5) nhdr++; else break;
+    }
+  } else nhdr = +nhdr;
+  if (nhdr === 0) {
+    header = Array.from({ length: width }, (_, i) => "col" + (i + 1)); body = rows;
+  } else {
+    const hrows = rows.slice(0, nhdr); body = rows.slice(nhdr);
+    header = Array.from({ length: width }, (_, i) =>
+      hrows.map(r => (r[i] ?? "").toString().trim()).filter(Boolean).join(" ") || ("col" + (i + 1)));
+  }
+  const seen = {};  // tên cột trùng → thêm _2, _3
+  header = header.map(h => { seen[h] = (seen[h] || 0) + 1; return seen[h] > 1 ? `${h}_${seen[h]}` : h; });
+  const cell = v => {
+    if (dec === "," && typeof v === "string" && NUMRE.test(v.trim())) v = v.trim().replace(",", ".");
+    return csvEscape(v);
+  };
+  return { csv: [header, ...body].map(r => Array.from({ length: width }, (_, i) => cell(r[i])).join(",")).join("\n"), nhdr };
+}
+function splitLine(line, delim) {
+  if (delim === "ws") return line.trim().split(/\s+/);
+  const out = []; let cur = "", q = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (q) { if (c === '"') { if (line[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += c; }
+    else if (c === '"') q = true;
+    else if (c === delim) { out.push(cur); cur = ""; }
+    else cur += c;
+  }
+  out.push(cur);
+  return out.map(x => x.trim());
+}
+function textToAoa(text, sep, dec) {
+  const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/).filter(l => l.trim() !== "");
+  const sample = lines.slice(0, 30).join("\n");
+  let delim = { tab: "\t", comma: ",", semicolon: ";", space: "ws" }[sep];
+  if (!delim) delim = sample.includes("\t") ? "\t" : sample.includes(";") ? ";" :
+                     (dec !== "," && sample.includes(",")) ? "," : "ws";
+  return lines.map(l => splitLine(l, delim));
+}
+function decodeText(buf) {
+  const b = new Uint8Array(buf);
+  if (b[0] === 0xFF && b[1] === 0xFE) return new TextDecoder("utf-16le").decode(buf);
+  if (b[0] === 0xFE && b[1] === 0xFF) return new TextDecoder("utf-16be").decode(buf);
+  const t = new TextDecoder("utf-8", { fatal: false }).decode(buf);
+  if (t.includes("\uFFFD")) return new TextDecoder("windows-1258").decode(buf);  // CSV xuất từ Excel tiếng Việt cũ
+  return t;
+}
+function ingestRaw(name, text, opts) {  // văn bản từ file/dán → bảng chuẩn
+  const aoa = textToAoa(text, opts.sep || "auto", opts.dec || ".");
+  const r = aoaToCsv(aoa, opts.skip || 0, opts.nhdr ?? "auto", opts.dec || ".");
+  if (name === "main") lastHdr = r.nhdr;
+  return ingestText(name, r.csv, { filename: opts.filename });
+}
+let lastHdr = 1;
+
+async function ingestText(name, text, opts) {  // CSV sạch (dấu phẩy, thập phân dấu chấm)
+  if (!ready) { pending[name] = { text, opts }; if (name === "main") $("#datainfo").textContent = "Đã nhận dữ liệu, chờ Python tải xong…"; return; }
+  const out = JSON.parse(callPy("load_csv", name, text, ".", "auto"));
+  callPy("set_file_name", name, opts.filename || name);
+  onData(name, out);
+}
+async function ingestPending(name, p) {
+  delete pending[name];
+  await ingestText(name, p.text, p.opts);
+}
+function onData(name, info) {
+  if (name === "main") {
+    dataInfo = info;
+    // tham số cũ không còn hợp với bảng mới → làm lại (giữ màu nhóm của dữ liệu mẫu)
+    values = sampleName && values.annotation_colors ? { annotation_colors: values.annotation_colors } : {};
+    $("#datainfo").innerHTML = `<b>${escapeHtml(currentFileName)}</b>: ${info.nrows} dòng × ${info.ncols} cột (${info.num.length} cột số)` +
+      (sampleName ? "" : ` · tiêu đề: ${lastHdr} dòng`) +
+      (info.num.length < info.ncols ? `<br>Cột không phải số: ${info.cols.filter(c => !info.num.includes(c)).map(escapeHtml).join(", ")}` : "");
+    renderTable($("#datatable"), info.cols, info.preview);
+    buildForm();
+  } else {
+    aux[name] = info;
+    const el = $(`[data-aux="${name}"] .auxinfo`);
+    if (el) el.textContent = `✓ ${info.nrows} dòng × ${info.ncols} cột`;
+    scheduleDraw();
+  }
+}
+function escapeHtml(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+function renderTable(tbl, cols, rows) {
+  tbl.innerHTML = "<thead><tr>" + cols.map(c => `<th>${escapeHtml(c)}</th>`).join("") + "</tr></thead><tbody>" +
+    rows.map(r => "<tr>" + r.map(v => `<td>${v === null ? "" : escapeHtml(typeof v === "number" ? +v.toPrecision(6) : v)}</td>`).join("") + "</tr>").join("") + "</tbody>";
+}
+
+function bestSheet(wb) {  // chọn sheet có nhiều ô số nhất (bỏ qua sheet ghi chú)
+  let best = wb.SheetNames[0], score = -1;
+  for (const n of wb.SheetNames) {
+    const ws = wb.Sheets[n]; let k = 0;
+    for (const a in ws) if (a[0] !== "!" && ws[a].t === "n") k++;
+    if (k > score) { score = k; best = n; }
+  }
+  return best;
+}
+async function readFile(file, name = "main", keepSheet = false) {
+  const ext = file.name.split(".").pop().toLowerCase();
+  const buf = await file.arrayBuffer();
+  const skip = +$("#skip").value || 0, nhdr = $("#hdr").value;
+  if (["xlsx", "xls", "xlsm", "ods", "xlsb"].includes(ext)) {
+    const wb = XLSX.read(buf, { type: "array", cellDates: true });
+    if (name === "main") {
+      const prev = keepSheet ? $("#sheet").value : null;
+      workbook = wb;
+      $("#xlsopts").style.display = "";
+      $("#sheet").innerHTML = wb.SheetNames.map(s => `<option>${escapeHtml(s)}</option>`).join("");
+      if (prev && wb.SheetNames.includes(prev)) $("#sheet").value = prev;
+      else $("#sheet").value = bestSheet(wb);
+    }
+    const sheetName = name === "main" ? $("#sheet").value : bestSheet(wb);
+    return ingestSheet(wb, sheetName, name, file.name, skip, nhdr);
+  }
+  if (name === "main") { workbook = null; $("#xlsopts").style.display = "none"; }
+  return ingestRaw(name, decodeText(buf), { sep: $("#sep").value, dec: $("#dec").value, skip, nhdr, filename: file.name });
+}
+function ingestSheet(wb, sheetName, name, filename, skip, nhdr) {
+  const ws = wb.Sheets[sheetName];
+  const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: "" });
+  const r = aoaToCsv(aoa, skip, nhdr, $("#dec").value);  // số trong Excel là số thật; chỉ ô chữ "1,23" mới cần đổi
+  if (name === "main") lastHdr = r.nhdr;
+  return ingestText(name, r.csv, { filename });
+}
+
+/* ------------------------------------------------------------------ plot types (schema) */
+const REFS = ["RHE", "SHE", "Ag/AgCl", "Ag/AgCl(3M)", "Ag/AgCl(3.5M)", "SCE", "Hg/HgO", "Hg/HgO(0.1M)", "Hg/Hg2SO4"];
+const PALETTES = ["auto", "okabe", "pastel", "npg", "aaas", "bold", "tableau", "gray", "viridis", "plasma", "coolwarm"];
+const SERIES_FMT = { k: "_fmt", label: "Dạng bảng", t: "sel", opts: [["long", "dài: cột x, cột y, cột tên mẫu"], ["wide", "rộng: 1 cột x + mỗi mẫu 1 cột y"], ["pairs", "cặp cột: x1, y1, x2, y2… (kiểu Origin)"]],
+  def: info => info.cols.some(c => /^(sample|scan|mẫu|mau)$/i.test(c)) ? "long" : "wide" };
+const echem = [
+  { k: "ref", label: "Điện cực so sánh khi đo", t: "sel", opts: REFS.map(r => [r, r]), def: "RHE" },
+  { k: "pH", label: "pH dung dịch", t: "number", def: 14, step: 0.5, show: o => o.ref !== "RHE" },
+  { k: "current_unit", label: "Đơn vị cột dòng", t: "sel", opts: [["mA/cm2", "mA/cm²"], ["mA", "mA"], ["A", "A"], ["uA", "µA"], ["A/cm2", "A/cm²"]], def: "mA/cm2" },
+  { k: "area", label: "Diện tích điện cực (cm², 0 = bỏ qua)", t: "number", def: 0, step: 0.001, zeroNone: true },
+  { k: "R", label: "R dung dịch để bù iR (Ω, 0 = không bù)", t: "number", def: 0, step: 0.1, zeroNone: true },
+];
+function seriesFields(xk, yk, xg, yg) {
+  return [SERIES_FMT,
+    { k: xk, label: "Cột trục X", t: "col", guess: xg, show: o => o._fmt !== "pairs" },
+    { k: yk, label: "Cột trục Y", t: "num", guess: yg, show: o => o._fmt === "long" },
+    { k: "sample", label: "Cột tên mẫu", t: "col", guess: ["sample", "scan", "mẫu"], show: o => o._fmt === "long" },
+    { k: "_ycols", label: "Các cột Y (mỗi cột là một mẫu)", t: "cols", show: o => o._fmt === "wide", exclude: xk },
+  ];
+}
+const TYPES = [
+  { grp: "Thống kê / sinh học (giáo trình ggplot2)" },
+  { id: "scatter", name: "Scatter", size: [5, 4], fields: [
+    { k: "x", label: "Trục X", t: "num", idx: 0 }, { k: "y", label: "Trục Y", t: "num", idx: 1 },
+    { k: "color", label: "Màu theo nhóm", t: "col", none: true, guess: ["Species", "group", "sample", "supp"] },
+    { k: "shape", label: "Hình dạng điểm theo", t: "col", none: true },
+    { k: "size", label: "Kích thước điểm theo (cột số)", t: "num", none: true },
+    { k: "facet", label: "Tách ô (facet)", t: "col", none: true },
+    { k: "fit", label: "Đường hồi quy", t: "sel", opts: [["", "không"], ["linear", "tuyến tính + CI 95%"], ["poly2", "bậc 2"], ["lowess", "lowess"]], def: "" },
+    { k: "label", label: "Gắn nhãn điểm theo cột", t: "col", none: true },
+    { k: "coord_fixed", label: "Tỉ lệ trục 1:1", t: "bool" },
+    { k: "point_size", label: "Cỡ điểm", t: "number", def: 36 },
+    { k: "logx", label: "Trục X log", t: "bool" }, { k: "logy", label: "Trục Y log", t: "bool" }] },
+  { id: "line", name: "Line (đường + điểm)", size: [5, 4], fields: [
+    { k: "_fmt", label: "Dạng bảng", t: "sel", opts: [["long", "dài: cột x, cột y, cột nhóm"], ["wide", "rộng: 1 cột x + mỗi mẫu 1 cột y"]],
+      def: info => info.num.length === info.ncols && info.ncols > 2 ? "wide" : "long" },
+    { k: "x", label: "Trục X", t: "num", idx: 0, guess: ["T_C", "time_min", "time", "temperature"] },
+    { k: "y", label: "Trục Y", t: "num", idx: 1, guess: ["conversion", "y", "value"], show: o => o._fmt !== "wide" },
+    { k: "color", label: "Màu theo nhóm (mỗi nhóm 1 đường)", t: "col", none: true, guess: ["sample", "catalyst", "group"], show: o => o._fmt !== "wide" },
+    { k: "_ycols", label: "Các cột Y (mỗi cột là một đường)", t: "cols", exclude: "x", show: o => o._fmt === "wide" },
+    { k: "agg", label: "Gộp replicate (mean ± error)", t: "sel", opts: [["", "không"], ["mean", "có"]], def: "" },
+    { k: "error", label: "Thanh sai số", t: "sel", opts: [["sd", "SD"], ["se", "SE"], ["ci95", "CI 95%"]], def: "sd", show: o => o.agg === "mean" },
+    { k: "markers", label: "Ký hiệu điểm", t: "sel", opts: [["o", "tròn (tất cả)"], ["true", "mỗi đường một ký hiệu"], ["false", "không"]], def: "o" },
+    { k: "ms", label: "Cỡ ký hiệu", t: "number", def: 5 }, { k: "lw", label: "Độ dày đường", t: "number", def: 1.4, step: 0.1 },
+    { k: "logx", label: "Trục X log", t: "bool" }, { k: "logy", label: "Trục Y log", t: "bool" }] },
+  { id: "bar", name: "Bar (cột ± SD, gradient)", size: [5, 4], fields: [
+    { k: "x", label: "Trục X (nhóm)", t: "col", guess: ["sample", "dose", "group", "treat"] },
+    { k: "hue", label: "Nhóm con (màu)", t: "col", none: true, guess: ["supp"] },
+    { k: "stat", label: "Kiểu thống kê", t: "sel", opts: [["mean", "mean ± error (dữ liệu thô)"], ["identity", "giá trị có sẵn"], ["count", "đếm số dòng"]],
+      def: info => info.cols.some(c => /^(sd|se|std|error)$/i.test(c)) ? "identity" : "mean" },
+    { k: "y", label: "Trục Y (giá trị)", t: "num", guess: ["rate", "len", "value", "mean"], show: o => o.stat !== "count" },
+    { k: "error", label: "Thanh sai số", t: "sel", opts: [["sd", "SD"], ["se", "SE"], ["ci95", "CI 95%"], ["none", "không"]], def: "sd", show: o => o.stat === "mean" },
+    { k: "err_col", label: "Cột SD/SE có sẵn", t: "num", none: true, guess: ["sd", "se", "std", "error"], show: o => o.stat === "identity" },
+    { k: "points", label: "Hiện từng điểm dữ liệu", t: "bool", show: o => o.stat === "mean" },
+    { k: "position", label: "Sắp xếp", t: "sel", opts: [["dodge", "cạnh nhau"], ["stack", "chồng lên"]], def: "dodge" },
+    { k: "_grad", label: "Tô gradient (kiểu Origin)", t: "bool", def: info => info.cols.includes("rate") },
+    { k: "_g1", label: "Màu trên", t: "color", def: "#F2A0A0", show: o => o._grad }, { k: "_g2", label: "Màu dưới", t: "color", def: "#F0D9A0", show: o => o._grad },
+    { k: "value_labels", label: "Ghi giá trị trên cột", t: "bool", def: info => info.cols.includes("rate") },
+    { k: "value_fmt", label: "Định dạng số (vd {:.2f}, {:.4g})", t: "text", def: "{:.4g}", show: o => o.value_labels },
+    { k: "horizontal", label: "Cột nằm ngang", t: "bool" },
+    { k: "rotate_x", label: "Xoay nhãn trục X (độ)", t: "number", def: info => info.cols.includes("rate") ? 30 : 0, zeroNone: true },
+    { k: "order", label: "Thứ tự trục X (vd 2,1,0.5)", t: "text" }] },
+  { id: "box", name: "Box / Violin", size: [5, 4], fields: [
+    { k: "x", label: "Trục X (nhóm)", t: "col", guess: ["dose", "Species", "group"] },
+    { k: "y", label: "Trục Y (giá trị)", t: "num", guess: ["len", "value"] },
+    { k: "hue", label: "Nhóm con (màu)", t: "col", none: true, guess: ["supp"] },
+    { k: "kind", label: "Kiểu", t: "sel", opts: [["box", "box"], ["violin", "violin"]], def: "box" },
+    { k: "points", label: "Jitter điểm dữ liệu", t: "bool", def: true },
+    { k: "filled", label: "Tô đặc hộp", t: "bool" }, { k: "show_mean", label: "Đánh dấu trung bình ◇", t: "bool" },
+    { k: "stats_test", label: "Kiểm định 2 nhóm con", t: "sel", opts: [["", "không"], ["t", "t (Welch)"], ["mw", "Mann–Whitney"]], def: "" },
+    { k: "rotate_x", label: "Xoay nhãn trục X (độ)", t: "number", def: 0, zeroNone: true }] },
+  { id: "histogram", name: "Histogram", size: [5, 4], fields: [
+    { k: "x", label: "Biến", t: "num", guess: ["len", "Petal.Length"] },
+    { k: "hue", label: "Theo nhóm", t: "col", none: true },
+    { k: "bins", label: "Số bins", t: "number", def: 20 },
+    { k: "binwidth", label: "…hoặc độ rộng bin (0 = dùng số bins)", t: "number", def: 0, zeroNone: true, step: 0.1 },
+    { k: "multiple", label: "Nhiều nhóm", t: "sel", opts: [["overlay", "chồng mờ"], ["stack", "xếp chồng"], ["dodge", "cạnh nhau"]], def: "overlay", show: o => o.hue },
+    { k: "density", label: "Trục Y = mật độ", t: "bool" }, { k: "kde", label: "Thêm đường KDE", t: "bool" },
+    { k: "color", label: "Màu (khi không chia nhóm)", t: "color", def: "#6495ED" }] },
+  { id: "pca", name: "PCA + elip 95%", size: [5.2, 4.2], fields: [
+    { k: "columns", label: "Các biến số", t: "cols" },
+    { k: "group", label: "Nhóm (màu + elip)", t: "col", none: true, guess: ["Species", "group", "sample"] },
+    { k: "scale", label: "Chuẩn hoá (scale = TRUE)", t: "bool", def: true },
+    { k: "ellipse", label: "Elip tin cậy", t: "bool", def: true },
+    { k: "level", label: "Mức tin cậy elip", t: "number", def: 0.95, step: 0.01 },
+    { k: "loadings", label: "Biplot (mũi tên loading)", t: "bool" },
+    { k: "label", label: "Gắn nhãn mẫu theo", t: "col", none: true }] },
+  { id: "volcano", name: "Volcano", size: [5, 4.5], fields: [
+    { k: "fc", label: "Cột log2 fold change", t: "num", guess: ["logFC", "log2FoldChange", "log2FC"] },
+    { k: "p", label: "Cột p-value / FDR", t: "num", guess: ["FDR", "padj", "adj.P.Val", "PValue", "pvalue"] },
+    { k: "label", label: "Cột tên gene", t: "col", none: true, guess: ["gene", "symbol", "transcript"] },
+    { k: "fc_thr", label: "Ngưỡng |log2FC|", t: "number", def: 1, step: 0.25 },
+    { k: "p_thr", label: "Ngưỡng p", t: "number", def: 0.05, step: 0.01 },
+    { k: "top", label: "Số gene gắn nhãn", t: "number", def: 10 },
+    { k: "label_genes", label: "…hoặc liệt kê gene (cách nhau dấu phẩy)", t: "text" },
+    { k: "colors", label: "Màu Down, NS, Up", t: "text", def: "#3B4992,#BBBBBB,#E11F28" }] },
+  { id: "heatmap", name: "Heatmap phân cụm", size: [6.5, 5.5], fields: [
+    { k: "index", label: "Cột tên hàng (gene/biến)", t: "col", none: true, guess: ["gene", "name", "id", "sample"] },
+    { k: "columns", label: "Các cột giá trị", t: "cols", excludeOpt: "index" },
+    { k: "scale", label: "Scale (z-score)", t: "sel", opts: [["row", "theo hàng"], ["column", "theo cột"], ["none", "không"]], def: "row" },
+    { k: "cluster_rows", label: "Phân cụm hàng", t: "bool", def: true }, { k: "cluster_cols", label: "Phân cụm cột", t: "bool", def: true },
+    { k: "distance", label: "Khoảng cách", t: "sel", opts: [["euclidean", "euclidean"], ["correlation", "correlation"], ["cityblock", "cityblock"], ["cosine", "cosine"]], def: "euclidean" },
+    { k: "method", label: "Phương pháp phân cụm", t: "sel", opts: [["complete", "complete"], ["average", "average"], ["ward", "ward"], ["single", "single"]], def: "complete" },
+    { k: "cmap", label: "Thang màu", t: "sel", opts: [["navy-white-red", "navy-white-red"], ["blue-white-red", "blue-white-red"], ["pheatmap", "pheatmap"], ["viridis", "viridis"], ["magma", "magma"], ["RdBu_r", "RdBu_r"]], def: "navy-white-red" },
+    { k: "cutree_rows", label: "Tách hàng thành … cụm", t: "number", def: 0, zeroNone: true },
+    { k: "cutree_cols", label: "Tách cột thành … cụm", t: "number", def: 0, zeroNone: true },
+    { k: "show_values", label: "Ghi giá trị trong ô", t: "bool" },
+    { k: "annotation_col", label: "Chú thích mẫu: file 2 cột (tên mẫu, nhóm)", t: "aux" },
+    { k: "annotation_colors", label: "Màu nhóm (JSON, tuỳ chọn)", t: "text", def: "" }] },
+
+  { grp: "Vật liệu & điện hoá" },
+  { id: "spectra", name: "XRD / Raman / FTIR / XPS", size: [4.5, 5], fields: [
+    ...seriesFields("x", "y", ["two_theta", "2theta", "2θ", "angle", "x", "wavenumber", "shift", "binding"], ["intensity", "counts", "y", "absorbance"]),
+    { k: "kind", label: "Loại phổ", t: "sel", opts: [["xrd", "XRD (2θ)"], ["raman", "Raman"], ["ftir", "FTIR (đảo trục)"], ["xps", "XPS (đảo trục)"], ["uvvis", "UV-Vis"], ["pl", "PL"]], def: "xrd" },
+    { k: "normalize", label: "Chuẩn hoá mỗi phổ về [0,1]", t: "bool", def: true },
+    { k: "offset", label: "Khoảng cách giữa các phổ (0 = tự động)", t: "number", def: 0, zeroNone: true, step: 0.1 },
+    { k: "smooth", label: "Làm mượt Savitzky–Golay (cửa sổ, 0 = tắt)", t: "number", def: 0, zeroNone: true },
+    { k: "labels", label: "Tên mẫu", t: "sel", opts: [["right", "ghi ở đầu phải mỗi phổ"], ["legend", "chú giải"]], def: "right" },
+    { k: "first_on_top", label: "Mẫu đầu tiên nằm trên cùng", t: "bool" },
+    { k: "phases", label: "Ký hiệu pha (JSON), vd {\"CuO\":[35.5,38.7]}", t: "text", def: info => info.cols.includes("two_theta") ? '{"CeO2":[28.55,33.08,47.48,56.33],"CuO":[35.54,38.71]}' : "" },
+    { k: "hkl", label: "Chỉ số hkl trên phổ trên cùng, vd 28.5:(111),33.1:(200)", t: "text" },
+    { k: "refs", label: "Thẻ chuẩn JCPDS: file cột x, intensity, name", t: "aux", sample: "xrd_refs_demo.csv" }] },
+  { id: "lsv", name: "LSV (OER/HER, η@10)", size: [4.8, 4], fields: [
+    ...seriesFields("E", "j", ["E_V", "E", "potential", "Potential"], ["I_mA", "j", "current", "j_mA_cm2"]), ...echem,
+    { k: "reaction", label: "Phản ứng", t: "sel", opts: [["OER", "OER"], ["HER", "HER"], ["", "khác (không tính η)"]], def: "OER" },
+    { k: "j_mark", label: "Tính η tại |j| (mA cm⁻²)", t: "number", def: 10, show: o => o.reaction }] },
+  { id: "tafel", name: "Tafel (tự fit độ dốc)", size: [4.5, 4], fields: [
+    ...seriesFields("E", "j", ["E_V", "E", "potential"], ["I_mA", "j", "current"]), ...echem,
+    { k: "reaction", label: "Phản ứng", t: "sel", opts: [["OER", "OER (η = E − 1.23)"], ["HER", "HER (η = |E|)"]], def: "OER" },
+    { k: "_f1", label: "Fit từ |j| = (mA cm⁻²)", t: "number", def: 1, step: 0.1 }, { k: "_f2", label: "đến |j| =", t: "number", def: 10 },
+    { k: "slope_labels", label: "Ghi độ dốc", t: "sel", opts: [["legend", "trong chú giải"], ["text", "cạnh đường fit"]], def: "legend" }] },
+  { id: "cv", name: "CV", size: [4.8, 4], fields: [
+    ...seriesFields("E", "j", ["E_V", "E", "potential"], ["j_mA_cm2", "I_mA", "j", "current"]), ...echem] },
+  { id: "cdl", name: "Cdl (Δj/2 vs tốc độ quét)", size: [4.5, 4], fields: [
+    { k: "x", label: "Cột tốc độ quét (mV/s)", t: "num", guess: ["scan_rate", "v", "scan"] },
+    { k: "_mode", label: "Dữ liệu", t: "sel", opts: [["jajc", "ja và jc"], ["dj", "Δj có sẵn"]], def: "jajc" },
+    { k: "ja", label: "Cột j anot", t: "num", guess: ["ja"], show: o => o._mode === "jajc" },
+    { k: "jc", label: "Cột j catot", t: "num", guess: ["jc"], show: o => o._mode === "jajc" },
+    { k: "y", label: "Cột Δj", t: "num", show: o => o._mode === "dj" },
+    { k: "sample", label: "Cột tên mẫu", t: "col", none: true, guess: ["sample"] }] },
+  { id: "nyquist", name: "Nyquist (EIS)", size: [4.5, 4.5], fields: [
+    ...seriesFields("zre", "zim", ["Zre_ohm", "Zre", "Z'", "Z_re", "Zreal"], ["Zim_ohm", "Zim", "Z''", "-Z''", "Z_im", "Zimag"]),
+    { k: "lines", label: "Nối điểm", t: "bool", def: true }, { k: "equal", label: "Tỉ lệ trục 1:1", t: "bool", def: true }] },
+  { id: "bet", name: "BET (N₂ + PSD)", size: [4.8, 4.2], fields: [
+    { k: "p", label: "Cột P/P0", t: "num", guess: ["P_P0", "P/P0", "p/p0", "relative pressure"] },
+    { k: "v", label: "Cột lượng hấp phụ", t: "num", guess: ["V_cm3g", "V", "quantity", "volume"] },
+    { k: "branch", label: "Cột nhánh ads/des (không có → tự tách)", t: "col", none: true, guess: ["branch"] },
+    { k: "sample", label: "Cột tên mẫu", t: "col", none: true, guess: ["sample"] },
+    { k: "calc", label: "Tính S_BET (P/P0 = 0.05–0.30)", t: "bool", def: true },
+    { k: "psd_x", label: "PSD: cột đường kính lỗ (nm)", t: "num", none: true, guess: ["pore_nm", "D", "diameter"] },
+    { k: "psd_y", label: "PSD: cột dV/dlogD", t: "num", none: true, guess: ["dVdlogD", "dV/dlogD"] }] },
+  { id: "tauc", name: "Tauc (Eg từ UV-Vis)", size: [4.5, 4], fields: [
+    ...seriesFields("wl", "A", ["wavelength_nm", "wavelength", "nm", "lambda"], ["absorbance", "A", "abs", "F(R)"]),
+    { k: "transition", label: "Chuyển mức", t: "sel", opts: [["direct", "trực tiếp (αhν)²"], ["indirect", "gián tiếp (αhν)^½"]], def: "direct" },
+    { k: "fit_range", label: "Khoảng fit (eV), vd 3.25,3.45 – trống = tự tìm", t: "text" }] },
+];
+const COMMON = [
+  { k: "title", label: "Tiêu đề", t: "text" },
+  { k: "xlabel", label: "Nhãn trục X (trống = tự động; chỉ số: $^{o}$C, cm$^{-2}$)", t: "text" },
+  { k: "ylabel", label: "Nhãn trục Y", t: "text" },
+  { k: "xlim", label: "Giới hạn X (vd 30,140)", t: "text" }, { k: "ylim", label: "Giới hạn Y (vd 0,20)", t: "text" },
+  { k: "xstep", label: "Bước tick X (0 = tự động)", t: "number", def: 0, zeroNone: true, step: 0.5 },
+  { k: "ystep", label: "Bước tick Y (0 = tự động)", t: "number", def: 0, zeroNone: true, step: 0.5 },
+  { k: "legend", label: "Vị trí chú giải", t: "sel", opts: [["", "tự động"], ["upper left", "trên-trái"], ["upper right", "trên-phải"], ["lower right", "dưới-phải"], ["lower left", "dưới-trái"], ["right", "ngoài, bên phải"], ["bottom", "ngoài, bên dưới"], ["top", "ngoài, bên trên"], ["none", "ẩn"]], def: "" },
+  { k: "legend_title", label: "Tiêu đề chú giải", t: "text" },
+  { k: "note", label: "Ghi chú góc trên-trái (vd @ At 90$^{o}$C)", t: "text" },
+  { k: "colors", label: "Màu tuỳ chỉnh (vd A=red,B=#0072B2)", t: "text", show: () => kind !== "volcano" },
+];
+const SAMPLES = [
+  ["co_oxidation_conversion.csv", "CO conversion theo nhiệt độ", "line"],
+  ["co_oxidation_rate.csv", "CO conversion rate (bar gradient)", "bar"],
+  ["xrd_demo.csv", "XRD xếp chồng", "spectra"],
+  ["lsv_oer_demo.csv", "LSV OER (dùng cho cả Tafel)", "lsv"],
+  ["cv_scanrate_demo.csv", "CV nhiều tốc độ quét", "cv"],
+  ["cdl_demo.csv", "Cdl", "cdl"], ["eis_demo.csv", "EIS Nyquist", "nyquist"],
+  ["bet_demo.csv", "BET + phân bố lỗ", "bet"], ["uvvis_demo.csv", "UV-Vis → Tauc", "tauc"],
+  ["catalyst_kinetics_demo.csv", "Động học xúc tác (3 lặp lại)", "line"],
+  ["iris.csv", "Iris (PCA, scatter)", "pca"], ["toothgrowth_demo.csv", "ToothGrowth (bar, box)", "box"],
+  ["de_results_demo.csv", "RNA-seq DE (volcano)", "volcano"], ["rnaseq_top20_demo.csv", "RNA-seq top 20 (heatmap)", "heatmap"],
+];
+const SAMPLE_AUX = { "rnaseq_top20_demo.csv": { annotation_col: "sample_annotation_demo.csv", annotation_colors: '{"dex":{"trt":"orange","untrt":"black"}}' } };
+const SAMPLE_EXTRA = {  // tham số mẫu để dựng lại đúng kiểu hình
+  "co_oxidation_conversion.csv": { _palette: "pastel", xlabel: "Temperature [$^{o}$C]", ylabel: "CO conversion efficiency [%]", xlim: "30,140", ylim: "-10,110", xstep: 20, ystep: 20, legend: "upper left" },
+  "co_oxidation_rate.csv": { xlabel: " ", ylabel: "CO conversion rate [mL/min$\\cdot$g$_{cat}$]", ylim: "0,20", ystep: 5, note: "@ At 90$^{o}$C" },
+  "lsv_oer_demo.csv": { ref: "Hg/HgO", pH: 14, current_unit: "mA", area: 0.196, R: 2.5 },
+  "uvvis_demo.csv": { xlim: "1.8,4.2" },
+};
+
+/* ------------------------------------------------------------------ form building */
+let kind = "line", values = {}, sampleName = null;
+function buildTypeGrid() {
+  $("#typegrid").innerHTML = TYPES.map(t => t.grp ? `<div class="grp">${t.grp}</div>` :
+    `<button data-type="${t.id}" class="${t.id === kind ? "on" : ""}">${t.name}</button>`).join("");
+  $$("#typegrid button").forEach(b => b.onclick = () => { setType(b.dataset.type); });
+}
+function setType(t, keepValues = false) {
+  kind = t;
+  $$("#typegrid button").forEach(b => b.classList.toggle("on", b.dataset.type === t));
+  const T = TYPES.find(x => x.id === t);
+  $("#typebadge").textContent = T.name;
+  $("#w").value = T.size[0]; $("#h").value = T.size[1];
+  $("#fname").value = t;
+  if (!keepValues) values = {};
+  buildForm();
+}
+function guessCol(list, pool) {
+  if (!list) return null;
+  for (const g of list) { const c = pool.find(c => c.toLowerCase() === g.toLowerCase()); if (c) return c; }
+  for (const g of list) { const c = pool.find(c => c.toLowerCase().includes(g.toLowerCase())); if (c) return c; }
+  return null;
+}
+function fieldDefault(f, info) {
+  if (typeof f.def === "function") return f.def(info);
+  if (f.def !== undefined) return f.def;
+  if (f.t === "bool") return false;
+  if (f.t === "col" || f.t === "num") {
+    const pool = f.t === "num" ? info.num : info.cols;
+    const g = guessCol(f.guess, pool);
+    if (g) return g;
+    if (f.none) return "";
+    if (f.idx !== undefined) return pool[Math.min(f.idx, pool.length - 1)] ?? "";
+    return pool[0] ?? "";
+  }
+  if (f.t === "cols") return null;  // tất cả
+  return "";
+}
+function buildForm() {
+  const T = TYPES.find(x => x.id === kind);
+  const info = dataInfo || { cols: [], num: [], preview: [] };
+  const all = [...T.fields, ...COMMON];
+  if (dataInfo) for (const f of all) if (!(f.k in values)) values[f.k] = fieldDefault(f, info);
+  if (dataInfo && sampleName && SAMPLE_EXTRA[sampleName] && !values.__extraApplied) {
+    for (const [k, v] of Object.entries(SAMPLE_EXTRA[sampleName])) if (k !== "_palette") values[k] = v;
+    if (SAMPLE_EXTRA[sampleName]._palette) $("#palette").value = SAMPLE_EXTRA[sampleName]._palette;
+    values.__extraApplied = true;
+  }
+  renderFields($("#form"), T.fields, info);
+  renderFields($("#form-common"), kind === "heatmap" ? COMMON.slice(0, 1) : COMMON, info);
+  scheduleDraw();
+}
+function renderFields(root, fields, info) {
+  root.innerHTML = "";
+  for (const f of fields) {
+    if (f.show && !f.show(values)) continue;
+    const id = "f_" + f.k;
+    let el;
+    if (f.t === "bool") {
+      el = document.createElement("label"); el.className = "chk";
+      el.innerHTML = `<input type="checkbox" id="${id}" ${values[f.k] ? "checked" : ""}> ${f.label}`;
+      el.querySelector("input").onchange = e => { values[f.k] = e.target.checked; buildFormKeep(); };
+    } else if (f.t === "cols") {
+      el = document.createElement("div"); el.className = "f";
+      const excl = f.exclude ? values[f.exclude] : f.excludeOpt ? values[f.excludeOpt] : null;
+      const pool = info.num.filter(c => c !== excl);
+      const sel = values[f.k] === null || values[f.k] === undefined ? pool : values[f.k];
+      el.innerHTML = `<span style="font-size:12.5px;color:var(--muted)">${f.label}</span><div class="multi">` +
+        pool.map(c => `<label><input type="checkbox" value="${escapeHtml(c)}" ${sel.includes(c) ? "checked" : ""}> ${escapeHtml(c)}</label>`).join("") + `</div>`;
+      el.querySelectorAll("input").forEach(i => i.onchange = () => {
+        values[f.k] = [...el.querySelectorAll("input:checked")].map(x => x.value); scheduleDraw();
+      });
+    } else if (f.t === "aux") {
+      el = document.createElement("div"); el.className = "f"; el.dataset.aux = f.k;
+      const has = aux[f.k];
+      el.innerHTML = `<span style="font-size:12.5px;color:var(--muted)">${f.label}</span>
+        <div class="btns"><label class="btn" style="cursor:pointer">Chọn file<input type="file" accept=".csv,.tsv,.txt,.xlsx,.xls,.ods" style="display:none"></label>
+        ${has ? '<button class="btn" data-clear>Bỏ</button>' : ""}<span class="auxinfo hint" style="align-self:center">${has ? `✓ ${has.nrows} dòng × ${has.ncols} cột` : ""}</span></div>`;
+      el.querySelector("input").onchange = e => e.target.files[0] && readFile(e.target.files[0], f.k).catch(showError);
+      const clr = el.querySelector("[data-clear]");
+      if (clr) clr.onclick = () => { delete aux[f.k]; buildFormKeep(); };
+    } else {
+      el = document.createElement("label"); el.className = "f";
+      let input;
+      const v = values[f.k] ?? "";
+      if (f.t === "sel" || f.t === "col" || f.t === "num") {
+        let opts = f.opts;
+        if (f.t !== "sel") {
+          const pool = f.t === "num" ? info.num : info.cols;
+          opts = [...(f.none ? [["", "— không —"]] : []), ...pool.map(c => [c, c])];
+        }
+        input = `<select id="${id}">` + opts.map(([val, lab]) => `<option value="${escapeHtml(val)}" ${String(val) === String(v) ? "selected" : ""}>${escapeHtml(lab)}</option>`).join("") + `</select>`;
+      } else if (f.t === "number") {
+        input = `<input type="number" id="${id}" value="${v}" step="${f.step || 1}">`;
+      } else if (f.t === "color") {
+        input = `<input type="color" id="${id}" value="${v}">`;
+      } else {
+        input = `<input type="text" id="${id}" value="${escapeHtml(v)}">`;
+      }
+      el.innerHTML = `<span>${f.label}</span>${input}`;
+      const inp = el.querySelector("input,select");
+      inp.oninput = inp.onchange = e => {
+        values[f.k] = f.t === "number" ? (e.target.value === "" ? "" : +e.target.value) : e.target.value;
+        if (e.type === "change" && fields.some(x => x.show)) buildFormKeep(); else scheduleDraw();
+      };
+    }
+    root.appendChild(el);
+  }
+}
+function buildFormKeep() {
+  const T = TYPES.find(x => x.id === kind);
+  const info = dataInfo || { cols: [], num: [] };
+  renderFields($("#form"), T.fields, info);
+  renderFields($("#form-common"), kind === "heatmap" ? COMMON.slice(0, 1) : COMMON, info);
+  scheduleDraw();
+}
+
+/* ------------------------------------------------------------------ collect options & draw */
+function collect() {
+  const T = TYPES.find(x => x.id === kind);
+  const fields = [...T.fields, ...(kind === "heatmap" ? COMMON.slice(0, 1) : COMMON)];
+  const o = {};
+  for (const f of fields) {
+    if (f.show && !f.show(values)) continue;
+    let v = values[f.k];
+    if (f.k.startsWith("_")) continue;
+    if (f.t === "aux") { if (aux[f.k]) o[f.k] = f.k; continue; }
+    if (f.t === "bool") { o[f.k] = !!v; continue; }
+    if (f.t === "cols") { if (Array.isArray(v)) o[f.k] = v; continue; }
+    if (v === "" || v === null || v === undefined) continue;
+    if (f.t === "number" && f.zeroNone && +v === 0) continue;
+    if (f.k === "markers") v = v === "true" ? true : v === "false" ? false : v;
+    o[f.k] = v;
+  }
+  if (kind === "line" && values._fmt === "wide") {
+    const ys = values._ycols ?? (dataInfo ? dataInfo.num.filter(c => c !== values.x) : []);
+    o._melt = { x: values.x, ys }; delete o.y; delete o.color;
+  } else if (values._fmt && kind !== "line") {  // dạng bảng của nhóm phổ / điện hoá
+    const s = T.fields.find(f => f.k === "_ycols");
+    const xk = T.fields[1].k, yk = T.fields[2].k;
+    if (values._fmt === "pairs") { o.pairs = true; delete o[xk]; delete o[yk]; delete o.sample; }
+    if (values._fmt === "wide") {
+      const ys = values._ycols ?? (dataInfo ? dataInfo.num.filter(c => c !== values[xk]) : []);
+      o[yk] = ys.join(","); delete o.sample;
+    }
+  }
+  if (kind === "bar" && values._grad) { o.gradient = `${values._g1},${values._g2}`; o.edgecolor = "#666666"; }
+  if (kind === "tafel") o.fit_range = [+values._f1 || 1, +values._f2 || 10];
+  if (kind === "pca" && Array.isArray(o.columns) && o.columns.length < 2) delete o.columns;
+  if (kind === "line" && !o.color) delete o.color;
+  const pal = $("#palette").value;
+  if (!["volcano", "heatmap"].includes(kind) && !(pal === "auto" && !["spectra", "lsv", "tafel", "cv", "nyquist", "tauc"].includes(kind)))
+    o.palette = pal === "auto" ? "auto" : pal;
+  if (kind === "volcano") { /* colors = Down,NS,Up */ } else if (o.colors === "") delete o.colors;
+  o.figsize = [+$("#w").value || 5, +$("#h").value || 4];
+  return o;
+}
+let drawTimer = null, drawing = false, lastCode = "";
+function scheduleDraw() {
+  if (!$("#auto").checked) return;
+  clearTimeout(drawTimer); drawTimer = setTimeout(draw, 350);
+}
+function showError(msg) {
+  const e = $("#err"); e.style.display = msg ? "block" : "none"; e.textContent = msg || "";
+}
+function friendly(err) {
+  const s = String(err && err.message || err);
+  const last = s.trim().split("\n").filter(Boolean).slice(-1)[0] || s;
+  let hint = "";
+  if (/KeyError/.test(last)) hint = "Có cột không tồn tại — kiểm tra lại các cột đã chọn.";
+  else if (/could not convert|ValueError/.test(last)) hint = "Cột được chọn có thể chứa chữ thay vì số, hoặc không đủ dữ liệu cho loại hình này.";
+  return (hint ? hint + "\n\n" : "") + last;
+}
+async function draw() {
+  if (!ready || !dataInfo || drawing) return;
+  drawing = true;
+  const pv = $("#preview");
+  pv.style.opacity = .55;
+  await new Promise(r => setTimeout(r, 20));
+  try {
+    const opts = collect();
+    const out = JSON.parse(callPy("render", kind, JSON.stringify(opts), $("#theme").value, $("#font").value, +$("#fontsize").value || 11, 110));
+    pv.innerHTML = `<img alt="Hình đã vẽ" src="data:image/png;base64,${out.png}">`;
+    showError("");
+    lastCode = out.code; $("#code").textContent = out.code;
+    if (out.results && out.results.length) {
+      const cols = Object.keys(out.results[0]);
+      renderTable($("#restable"), cols, out.results.map(r => cols.map(c => r[c])));
+      $("#rescard").style.display = "";
+    } else $("#rescard").style.display = "none";
+  } catch (e) {
+    console.error(e);
+    showError(friendly(e));
+  } finally { pv.style.opacity = 1; drawing = false; }
+}
+function download(b64, mime, name) {
+  const bin = atob(b64), arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  const url = URL.createObjectURL(new Blob([arr], { type: mime }));
+  const a = Object.assign(document.createElement("a"), { href: url, download: name });
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+/* ------------------------------------------------------------------ wiring */
+function init() {
+  $("#palette").innerHTML = PALETTES.map(p => `<option>${p}</option>`).join("");
+  $("#samplesel").innerHTML = `<option value="">— chọn —</option>` + SAMPLES.map(([f, l]) => `<option value="${f}">${l}</option>`).join("");
+  buildTypeGrid(); setType("line");
+  $$("#srctabs button").forEach(b => b.onclick = () => {
+    $$("#srctabs button").forEach(x => x.classList.toggle("on", x === b));
+    for (const s of ["file", "paste", "sample"]) $("#src-" + s).style.display = s === b.dataset.src ? "" : "none";
+  });
+  const drop = $("#drop"), file = $("#file");
+  drop.onclick = () => file.click();
+  file.onchange = () => file.files[0] && loadMainFile(file.files[0]);
+  drop.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
+  drop.ondragleave = () => drop.classList.remove("over");
+  drop.ondrop = e => { e.preventDefault(); drop.classList.remove("over"); e.dataTransfer.files[0] && loadMainFile(e.dataTransfer.files[0]); };
+  let lastFile = null;
+  async function loadMainFile(f) {
+    lastFile = f; currentFileName = f.name; sampleName = null; dataInfo = null; values = {};
+    try { await readFile(f, "main"); } catch (e) { showError(friendly(e)); }
+  }
+  const reread = () => lastFile && readFile(lastFile, "main", true).catch(e => showError(friendly(e)));
+  $("#sheet").onchange = () => { if (workbook) { values = {}; ingestSheet(workbook, $("#sheet").value, "main", lastFile.name, +$("#skip").value || 0, $("#hdr").value).catch(e => showError(friendly(e))); } };
+  ["#skip", "#hdr", "#sep", "#dec"].forEach(s => $(s).onchange = () => { values = {}; reread(); });
+  $("#pastebtn").onclick = () => {
+    const t = $("#pastebox").value; if (!t.trim()) return;
+    currentFileName = "dữ liệu dán"; sampleName = null; values = {};
+    ingestRaw("main", t, { sep: $("#sep").value, dec: $("#dec").value, skip: +$("#skip").value || 0, nhdr: $("#hdr").value, filename: "data.csv" }).catch(e => showError(friendly(e)));
+  };
+  $("#samplesel").onchange = async e => {
+    const f = e.target.value; if (!f) return;
+    const S = SAMPLES.find(s => s[0] === f);
+    try {
+      const txt = await (await fetch("examples/" + f)).text();
+      currentFileName = f; sampleName = f; dataInfo = null; values = {};
+      kind = S[2]; buildTypeGrid(); setType(S[2]);
+      if (SAMPLE_AUX[f]) for (const [k, v] of Object.entries(SAMPLE_AUX[f])) {
+        if (v.endsWith(".csv")) await ingestText(k, await (await fetch("examples/" + v)).text(), { filename: v });
+        else values[k] = v;
+      }
+      if (f === "xrd_demo.csv") await ingestText("refs", await (await fetch("examples/xrd_refs_demo.csv")).text(), { filename: "xrd_refs_demo.csv" });
+      await ingestText("main", txt, { filename: f });
+    } catch (err) { showError("Không tải được dữ liệu mẫu: " + err); }
+  };
+  ["#theme", "#font", "#fontsize", "#palette", "#w", "#h"].forEach(s => $(s).onchange = () => scheduleDraw());
+  $("#drawbtn").onclick = draw;
+  $$("[data-fmt]").forEach(b => b.onclick = () => {
+    if (!ready) return;
+    const fmt = b.dataset.fmt;
+    try {
+      const b64 = callPy("export", fmt, +$("#dpi").value, $("#transp").checked);
+      if (!b64) { showError("Hãy vẽ hình trước khi xuất."); return; }
+      download(b64, { png: "image/png", pdf: "application/pdf", svg: "image/svg+xml", tiff: "image/tiff" }[fmt], `${$("#fname").value || "figure"}.${fmt === "tiff" ? "tif" : fmt}`);
+    } catch (e) { showError(friendly(e)); }
+  });
+  $("#rescsv").onclick = () => {
+    const csv = callPy("results_csv"); if (!csv) return;
+    download(btoa(unescape(encodeURIComponent("﻿" + csv))), "text/csv", `${$("#fname").value || "results"}_results.csv`);
+  };
+  $("#copycode").onclick = () => navigator.clipboard && navigator.clipboard.writeText(lastCode);
+  boot();
+}
+init();
+</script>
+</body>
+</html>
