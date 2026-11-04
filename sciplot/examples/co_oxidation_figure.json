@@ -1,6 +1,6 @@
 {
   "figsize": [11, 4.8],
-  "theme": "origin",
+  "theme": "boxed",
   "font": "sans",
   "fontsize": 12,
   "tags": "(a)",

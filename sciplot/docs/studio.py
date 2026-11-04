@@ -1,4 +1,4 @@
-"""SciPlot Studio — lõi Python cho giao diện kiểu Origin (chạy trong Pyodide hoặc CPython).
+"""SciPlot Studio — lõi Python cho SciPlot Studio (chạy trong Pyodide hoặc CPython).
 
 Mô hình:
   • Workbook: các cột (tên ngắn A, B, C… + Long Name, Units, Comments, kiểu X/Y/yEr/L/N) + dữ liệu.
@@ -22,6 +22,23 @@ import pandas as pd
 from matplotlib.ticker import AutoMinorLocator, MultipleLocator, NullLocator
 
 import sciplot as sp
+
+
+LANG = "vi"
+_EN = {"Kiểu fit": "Fit type", "bậc 2": "order 2", "bậc 3": "order 3", "R² hiệu chỉnh": "Adjusted R²",
+       "Mẫu": "Sample", "Giá trị": "Value", "Chưa có dữ liệu — chọn cột Y trong worksheet": "No data — select Y columns in the worksheet",
+       "Không có cột": "No column", "trong": "in", "Công thức có từ khoá không cho phép": "The formula contains a forbidden keyword",
+       "Không biết loại hình": "Unknown plot type"}
+
+
+def set_lang(lang):
+    global LANG
+    LANG = "en" if str(lang) == "en" else "vi"
+    return LANG
+
+
+def _t(s):
+    return _EN.get(s, s) if LANG == "en" else s
 
 def _register_fonts(folder="fonts"):
     """Font Liberation Sans/Serif (thay thế tương đương Arial/Times New Roman, giấy phép SIL OFL)."""
@@ -75,7 +92,7 @@ def _col(bid, name):
     b = BOOKS[bid]
     meta = next((c for c in b["cols"] if c["name"] == name), None)
     if meta is None:
-        raise KeyError(f"Không có cột {name} trong {b.get('name', bid)}")
+        raise KeyError(f"{_t('Không có cột')} {name} {_t('trong')} {b.get('name', bid)}")
     return b["df"][name], meta
 
 
@@ -89,7 +106,7 @@ def _axis_label(meta):
 
 
 def set_column_values(bid: str, target: str, formula: str) -> str:
-    """Tính cột bằng công thức kiểu Origin: col(A)*1000, log10(abs(col(B))), col(B)/col(C), i …"""
+    """Tính cột bằng công thức: col(A)*1000, log10(abs(col(B))), col(B)/col(C), i …"""
     b = BOOKS[bid]
     df = b["df"]
     n = len(df)
@@ -106,19 +123,19 @@ def set_column_values(bid: str, target: str, formula: str) -> str:
         for c in b["cols"]:
             if _disp(c) == key:
                 return pd.to_numeric(df[c["name"]], errors="coerce").to_numpy(float)
-        raise KeyError(f"Không có cột {key}")
+        raise KeyError(f"{_t('Không có cột')} {key}")
 
     ns["col"] = col
     expr = re.sub(r"col\(\s*([A-Za-z][A-Za-z0-9_]*)\s*\)", r'col("\1")', formula)
     if re.search(r"__|import|lambda|open|exec|eval", expr):
-        raise ValueError("Công thức có từ khoá không cho phép")
+        raise ValueError(_t("Công thức có từ khoá không cho phép"))
     val = eval(expr, {"__builtins__": {}}, ns)  # noqa: S307 – chỉ chạy trong trình duyệt của chính người dùng
     arr = np.broadcast_to(np.asarray(val, float), (n,)).astype(float)
     return json.dumps([None if not np.isfinite(v) else float(v) for v in arr])
 
 
 def unstack(bid: str, xcol: str, ycol: str, gcol: str) -> str:
-    """Bảng dạng dài (x, y, nhóm) → các cặp cột X/Y theo từng nhóm (giống Unstack Columns của Origin)."""
+    """Bảng dạng dài (x, y, nhóm) → các cặp cột X/Y theo từng nhóm."""
     b = BOOKS[bid]
     df = b["df"]
     _, mx = _col(bid, xcol)
@@ -393,13 +410,13 @@ def _fit_series(ax, target, x, y, s, st, label, k):
                 fontsize=float(s["fit_size"]) if s.get("fit_size") else None)
     res = getattr(ax, "_sciplot_results", {})
     names = ["a", "b"] if kind in ("linear", "linear0") else [f"a{p_}" for p_ in range(deg, -1, -1)]
-    row = {"Kiểu fit": {"linear": "y = ax + b", "linear0": "y = ax", "poly2": "bậc 2", "poly3": "bậc 3"}[kind]}
+    row = {_t("Kiểu fit"): {"linear": "y = ax + b", "linear0": "y = ax", "poly2": _t("bậc 2"), "poly3": _t("bậc 3")}[kind]}
     for nm, c_, e_ in zip(names, coef, se):
         if kind == "linear0" and nm == "b":
             continue
         row[nm] = float(c_)
         row[f"SE({nm})"] = float(e_) if np.isfinite(e_) else None
-    row.update({"R²": float(r2) if np.isfinite(r2) else None, "R² hiệu chỉnh": float(r2adj) if np.isfinite(r2adj) else None,
+    row.update({"R²": float(r2) if np.isfinite(r2) else None, _t("R² hiệu chỉnh"): float(r2adj) if np.isfinite(r2adj) else None,
                 "n": int(n)})
     res[label] = row
     ax._sciplot_results = res
@@ -513,7 +530,7 @@ def _plot_sciplot(G, ax, items, styles):
             df["gene"] = lc.astype(str).values[:len(df)]
         sp.volcano(df, fc="fc", p="p", label="gene" if lab_col else None, ax=ax, **o)
         return None, None
-    raise ValueError(f"Không biết loại hình {kind}")
+    raise ValueError(f"{_t('Không biết loại hình')} {kind}")
 
 
 # ---------------------------------------------------------------------------------- formatting
@@ -648,7 +665,7 @@ def _frame(ax, G):
 # ---------------------------------------------------------------------------------- render
 
 def _build(G, dpi):
-    sp.set_theme(G.get("theme", "origin"), G.get("font", "sans"), float(G.get("fontsize", 11)))
+    sp.set_theme(G.get("theme", "boxed"), G.get("font", "sans"), float(G.get("fontsize", 11)))
     w, h = G.get("size", [5, 4])
     fig, ax = plt.subplots(figsize=(float(w), float(h)), dpi=dpi)
     ax2, leg = _draw(G, ax)
@@ -685,13 +702,13 @@ def _draw(G, ax):
     ax2 = handles = None
     generic = kind in ("line", "scatter", "linesymbol", "area", "column", "xps")
     if not items:
-        ax.text(0.5, 0.5, "Chưa có dữ liệu — chọn cột Y trong worksheet", ha="center", va="center",
+        ax.text(0.5, 0.5, _t("Chưa có dữ liệu — chọn cột Y trong worksheet"), ha="center", va="center",
                 transform=ax.transAxes, color="#888")
     elif kind in ("line", "scatter", "linesymbol", "area", "column", "xps"):
         ax2, handles = _plot_xy(G, ax, items, styles)
     else:
         _plot_sciplot(G, ax, items, styles)
-    # nhãn trục tự động lấy từ Long Name (Units) giống Origin
+    # nhãn trục tự động lấy từ Long Name (Units)
     dx = _axis_label(items[0]["mx"]) if (generic and items) else None
     dy = _default_ylabel(items, series) if (generic and items) else None
     if kind == "xps":
@@ -831,11 +848,11 @@ def render_graph(graph_json: str, dpi: float = 110) -> str:
         if len(rr):
             pass  # giữ đủ chữ số; giao diện tự hiển thị 6 chữ số có nghĩa
             if isinstance(rr, pd.Series):
-                res = [{"Mẫu": str(k), "Giá trị": (None if not np.isfinite(v) else float(v))} for k, v in rr.items()]
+                res = [{_t("Mẫu"): str(k), _t("Giá trị"): (None if not np.isfinite(v) else float(v))} for k, v in rr.items()]
             else:
                 cv = lambda v: None if v is None or (isinstance(v, float) and not np.isfinite(v)) else \
                     (float(v) if isinstance(v, (int, float, np.integer, np.floating)) else str(v))
-                res = [{"Mẫu": str(k), **{str(c): cv(v) for c, v in row.items()}}
+                res = [{_t("Mẫu"): str(k), **{str(c): cv(v) for c, v in row.items()}}
                        for k, row in rr.iterrows()]
     except Exception:
         res = []
@@ -863,7 +880,7 @@ def export_panel(panel_json: str, fmt: str = "png", dpi: float = 600, transparen
     ncol = max(1, int(P.get("ncol", 2)))
     nrow = math.ceil(len(graphs) / ncol)
     G0 = graphs[0]
-    sp.set_theme(G0.get("theme", "origin"), G0.get("font", "sans"), float(G0.get("fontsize", 11)))
+    sp.set_theme(G0.get("theme", "boxed"), G0.get("font", "sans"), float(G0.get("fontsize", 11)))
     w = max(float(g.get("size", [5, 4])[0]) for g in graphs)
     h = max(float(g.get("size", [5, 4])[1]) for g in graphs)
     fig, axs = plt.subplots(nrow, ncol, figsize=(w * ncol, h * nrow), squeeze=False, layout="constrained")

@@ -2,10 +2,10 @@
 
 Thư mục `docs/` là một trang web tĩnh hoàn chỉnh. Python (numpy, pandas, matplotlib, scipy) chạy ngay trong trình duyệt nhờ Pyodide, nên không cần máy chủ. Dữ liệu người dùng mở chỉ nằm trong trình duyệt của họ, không gửi đi đâu.
 
-- `index.html`: **SciPlot Studio**, giao diện kiểu Origin (worksheet, bấm đúp để chỉnh, kéo-thả).
+- `index.html`: **SciPlot Studio**, giao diện worksheet + đồ thị (bấm đúp để chỉnh, kéo-thả).
 - `simple.html`: bản đơn giản dạng form, mở từ menu Help.
 
-## Cập nhật lên repo `figures` đang có
+## Cập nhật lên repo `SciPlotStudio`
 
 Trong repo hiện tại, trang nằm ở `sciplot/docs/`, và file `index.html` ở thư mục gốc đã chuyển hướng vào đó. Vì vậy chỉ cần thay nội dung thư mục:
 
@@ -13,7 +13,7 @@ Trong repo hiện tại, trang nằm ở `sciplot/docs/`, và file `index.html` 
 2. Trên GitHub, mở thư mục `sciplot/docs` của repo, chọn **Add file → Upload files**, rồi kéo **toàn bộ nội dung** thư mục `docs/` mới vào (gồm cả các thư mục con `icons`, `fonts`, `wheels`, `examples`). File trùng tên sẽ được ghi đè.
 3. Bấm **Commit changes** và đợi 1–2 phút.
 
-Địa chỉ trang vẫn là `https://lephong2810.github.io/figures/`.
+Địa chỉ trang vẫn là `https://lephong2810.github.io/SciPlotStudio/`.
 
 ## Khi sửa code
 
@@ -31,7 +31,7 @@ rồi push lại. Lệnh này đánh số phiên bản mới, để app đã cà
 
 Sau lần mở đầu tiên có mạng (tải khoảng 30–40 MB), app chạy được cả khi không có Internet. Khi có bản mới, thanh trạng thái sẽ nhắc tải lại trang.
 
-## Cách dùng: các thao tác giống Origin
+## Cách dùng: các thao tác chính
 
 | Việc cần làm | Thao tác |
 |---|---|

@@ -79,15 +79,17 @@ FONTS = {
 }
 
 
-THEMES = ["origin", "origin-in", "classic", "bw", "minimal"]
+THEMES = ["boxed", "boxed-in", "classic", "bw", "minimal"]
 
 
-def set_theme(theme: str = "origin", font: str = "sans", fontsize: float = 11) -> None:
+def set_theme(theme: str = "boxed", font: str = "sans", fontsize: float = 11) -> None:
     """Đặt giao diện chung.
-    theme: origin    – khung kín 4 cạnh, tick ra ngoài ở trục trái/dưới, có minor tick (giống OriginLab)
-           origin-in – khung kín 4 cạnh, tick hướng vào trong, có ở cả 4 cạnh (kiểu bài báo điện hoá)
+    theme: boxed     – khung kín 4 cạnh, tick ra ngoài ở trục trái/dưới, có minor tick
+           boxed-in  – khung kín 4 cạnh, tick hướng vào trong, có ở cả 4 cạnh (kiểu bài báo điện hoá)
            classic | bw | minimal (kiểu ggplot2)
     font: sans | serif | mono | <tên font>."""
+    if theme not in THEMES:  # tên khung lạ (project cũ) → khung kín tương ứng
+        theme = "boxed-in" if str(theme).endswith("-in") else "boxed"
     family = FONTS.get(font, [font] + FONTS["sans"])
     rc = {
         "font.family": "sans-serif" if font != "serif" else "serif",
@@ -119,8 +121,8 @@ def set_theme(theme: str = "origin", font: str = "sans", fontsize: float = 11) -
         rc["font.monospace"] = FONTS["mono"]
     rc.update({"xtick.minor.visible": False, "ytick.minor.visible": False, "xtick.top": False,
                "ytick.right": False, "axes.spines.left": True, "axes.spines.bottom": True})
-    if theme in ("origin", "origin-in"):
-        inward = theme == "origin-in"
+    if theme in ("boxed", "boxed-in"):
+        inward = theme == "boxed-in"
         rc.update({"axes.spines.top": True, "axes.spines.right": True, "axes.grid": False,
                    "axes.linewidth": 1.2, "xtick.major.width": 1.2, "ytick.major.width": 1.2,
                    "xtick.minor.width": 1.0, "ytick.minor.width": 1.0,
@@ -569,7 +571,7 @@ def bar(df, x, y=None, hue=None, stat="mean", error="sd", err_col=None, position
         horizontal=False, width=0.8, edgecolor="black", capsize=3, figsize=(5, 4),
         value_labels=False, value_fmt="{:.2f}", gradient=None, errcolor="#333333", **kw):
     """Bar plot.
-    gradient = "#F2A3A3,#F2D9A0" – tô cột chuyển màu (trên → dưới), giống hình xuất từ Origin.
+    gradient = "#F2A3A3,#F2D9A0" – tô cột chuyển màu (trên → dưới).
     value_labels=True – ghi giá trị phía trên thanh sai số (value_fmt định dạng, vd "{:.1f}").
     stat='count'    – đếm số dòng mỗi nhóm (stat_count)
     stat='mean'     – tính trung bình từ dữ liệu thô, error = sd | se | ci95 | none
@@ -1017,7 +1019,7 @@ SPECTRA_PRESETS = {
 
 
 def pairs_to_long(df, xname="x", yname="y", sample="sample"):
-    """Bảng dạng cặp cột (x1, y1, x2, y2, …) – kiểu xuất từ Origin/Excel – → dạng dài.
+    """Bảng dạng cặp cột (x1, y1, x2, y2, …) – kiểu xuất từ bảng tính – → dạng dài.
     Tên mẫu lấy theo tiêu đề cột y."""
     out = []
     cols = list(df.columns)
@@ -1649,7 +1651,7 @@ def panel(spec: dict | str, base_dir: str | Path | None = None):
     {
       "layout": [["A","B"],["C","C"]],      # lưới kiểu mosaic (patchwork); chữ trùng = gộp ô
       "figsize": [10, 8], "tags": "A",      # tags: 'A' | 'a' | '1' | null
-      "theme": "origin", "font": "sans", "fontsize": 10, "title": "Figure 1",
+      "theme": "boxed", "font": "sans", "fontsize": 10, "title": "Figure 1",
       "widths": [1, 1], "heights": [1, 1.4],
       "panels": {"A": {"type": "pca", "data": "iris.csv", "group": "Species"}, ...}
     }"""
@@ -1657,7 +1659,7 @@ def panel(spec: dict | str, base_dir: str | Path | None = None):
         base_dir = base_dir or Path(spec).parent
         spec = json.loads(Path(spec).read_text(encoding="utf-8"))
     base_dir = Path(base_dir or ".")
-    set_theme(spec.get("theme", "origin"), spec.get("font", "sans"), spec.get("fontsize", 10))
+    set_theme(spec.get("theme", "boxed"), spec.get("font", "sans"), spec.get("fontsize", 10))
     layout = spec["layout"]
     if isinstance(layout, str):
         layout = [list(r.strip()) for r in layout.strip().split("\n")]
@@ -1769,7 +1771,7 @@ def main(argv=None):
     ap.add_argument("data", help="file dữ liệu (hoặc file JSON với 'panel')")
     ap.add_argument("-o", "--out", default=None, help="file xuất (.png/.pdf/.svg/.tif); mặc định <loại>.png")
     ap.add_argument("--dpi", type=int, default=300)
-    ap.add_argument("--theme", default="origin", choices=THEMES)
+    ap.add_argument("--theme", default="boxed", choices=THEMES)
     ap.add_argument("--font", default="sans", help="sans | serif | mono | tên font")
     ap.add_argument("--fontsize", type=float, default=11)
     ap.add_argument("--width", type=float, default=None, help="chiều rộng hình (inch)")

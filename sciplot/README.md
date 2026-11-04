@@ -11,7 +11,7 @@ Có ba cách dùng:
 ## Bản web (GitHub Pages)
 
 Thư mục `docs/` là bản web tĩnh: Python chạy ngay trong trình duyệt (Pyodide), không cần máy chủ, dữ liệu không rời khỏi máy người dùng. Trang hỗ trợ:
-- tải file Excel (nhiều sheet, tiêu đề nhiều dòng kiểu Origin), CSV, TXT;
+- tải file Excel (nhiều sheet, tiêu đề nhiều dòng: tên, đơn vị, ghi chú), CSV, TXT;
 - dán dữ liệu trực tiếp;
 - xuất PNG/PDF/SVG/TIFF;
 - hiện code Python tương ứng.
@@ -59,13 +59,13 @@ Các giá trị tính được ghi vào chú giải, in ra màn hình khi chạy
 Ba dạng bảng dữ liệu đều đọc được:
 - **dạng dài**: cột x, cột y, cột `sample`;
 - **dạng rộng**: một cột x, mỗi mẫu một cột y (`--y "A,B,C"`, hoặc bỏ trống để lấy mọi cột số);
-- **dạng cặp cột** kiểu Origin/Excel: x1, y1, x2, y2… (`--pairs true`, tên mẫu lấy theo tiêu đề cột y).
+- **dạng cặp cột** như trong bảng tính: x1, y1, x2, y2… (`--pairs true`, tên mẫu lấy theo tiêu đề cột y).
 
-### Khung hình kiểu Origin (mặc định)
+### Khung kín 4 cạnh (mặc định)
 
-`--theme origin` là mặc định: khung kín 4 cạnh, tick chính và tick phụ hướng ra ngoài ở trục trái/dưới, giống hình xuất từ OriginLab.
+`--theme boxed` là mặc định: khung kín 4 cạnh, tick chính và tick phụ hướng ra ngoài ở trục trái/dưới.
 Các lựa chọn khác:
-- `origin-in`: tick hướng vào trong, có ở cả 4 cạnh;
+- `boxed-in`: tick hướng vào trong, có ở cả 4 cạnh;
 - `classic`: chỉ có trục trái và dưới, kiểu ggplot2;
 - `bw`;
 - `minimal`.
@@ -118,7 +118,7 @@ python sciplot.py heatmap examples/rnaseq_top20_demo.csv --index gene --scale ro
        --annotation_colors '{"dex":{"trt":"orange","untrt":"black"}}' --cutree_rows 2 --cutree_cols 2 -o heatmap.png
 python sciplot.py panel examples/panel.json -o figure1.pdf
 ```
-Các tuỳ chọn chung trên dòng lệnh: `--theme origin|origin-in|classic|bw|minimal`, `--font sans|serif|"Tên font"`, `--fontsize 11`, `--width 6 --height 4` (đơn vị inch), `--dpi 600`, `--sheet Sheet1` (với file Excel). Xem đầy đủ bằng `python sciplot.py --help`.
+Các tuỳ chọn chung trên dòng lệnh: `--theme boxed|boxed-in|classic|bw|minimal`, `--font sans|serif|"Tên font"`, `--fontsize 11`, `--width 6 --height 4` (đơn vị inch), `--dpi 600`, `--sheet Sheet1` (với file Excel). Xem đầy đủ bằng `python sciplot.py --help`.
 
 ## Dùng trong Python hoặc Jupyter
 
@@ -161,3 +161,19 @@ Trong `layout`, cùng một chữ lặp lại sẽ gộp ô (như `E` ở trên)
 - Vị trí các đỉnh trong `xrd_refs_demo.csv` (CeO₂ 34-0394, CuO 45-0937) chỉ là giá trị gần đúng để minh hoạ. Khi dùng thật, nhập thẻ chuẩn chính thức (cột `x`, `intensity`, `name`).
 - Elip PCA được tính theo hiệp phương sai với hệ số F. `stat_ellipse` của R mặc định dùng phân phối t đa biến, nên kích thước elip có thể chênh nhẹ.
 - Dấu của các PC có thể ngược so với `prcomp`. Đây chỉ là quy ước, không ảnh hưởng ý nghĩa.
+
+## Ủng hộ và trích dẫn
+
+Nếu thấy SciPlot hữu ích, hãy nhấn ⭐ **Star** cho repo trên GitHub, và ghi nhận phần mềm trong bài báo/luận văn của bạn, ví dụ:
+
+> *Acknowledgments:* The authors thank Dr. Phong Hoai Le (University of Science, VNU-HCM, Vietnam) for developing SciPlot Studio (https://github.com/lephong2810/SciPlotStudio), which was used to prepare the figures in this work.
+
+> *Methods:* Figures were prepared using SciPlot Studio (version 1.0; P. H. Le, University of Science, VNU-HCM, Vietnam; https://github.com/lephong2810/SciPlotStudio).
+
+Trong app: **Help → ⭐ Ủng hộ & trích dẫn** có sẵn các mẫu câu và nút sao chép. File `CITATION.cff` cho GitHub hiện nút *Cite this repository*.
+
+## Giấy phép và lưu ý
+
+- Mã nguồn SciPlot phát hành theo giấy phép MIT (`LICENSE`). Các thư viện mã nguồn mở đi kèm và giấy phép của chúng: xem `THIRD_PARTY_NOTICES.md`.
+- SciPlot là phần mềm độc lập, không liên kết hay được xác nhận bởi bất kỳ nhà phát triển phần mềm hoặc nhà xuất bản nào.
+- Dữ liệu trong `examples/` là dữ liệu mô phỏng.

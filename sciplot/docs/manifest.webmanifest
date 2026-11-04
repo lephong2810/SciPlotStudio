@@ -1,7 +1,7 @@
 {
   "name": "SciPlot Studio",
   "short_name": "SciPlot",
-  "description": "Vẽ và chỉnh sửa hình khoa học kiểu Origin, chạy trong trình duyệt.",
+  "description": "Vẽ và chỉnh sửa hình khoa học chuẩn bài báo, chạy trong trình duyệt.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

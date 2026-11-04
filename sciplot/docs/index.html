@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SciPlot Studio</title>
-<meta name="description" content="Vẽ và chỉnh sửa hình khoa học kiểu Origin ngay trong trình duyệt: worksheet, bấm đúp để chỉnh trục, chú giải, chữ; xuất PNG/PDF/SVG/TIFF.">
+<meta name="description" content="Vẽ và chỉnh sửa hình khoa học chuẩn bài báo ngay trong trình duyệt: worksheet, bấm đúp để chỉnh trục, chú giải, chữ; xuất PNG/PDF/SVG/TIFF.">
 <meta name="theme-color" content="#2b3a55">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png" type="image/png">
@@ -18,14 +18,15 @@
   <header id="menubar">
     <div class="brand"><img src="icons/icon-192.png" alt=""> SciPlot Studio</div>
     <nav id="menus"></nav>
-    <div id="pystatus" title="Trạng thái Python"><span class="dot"></span><span id="pystatustext">Đang tải Python…</span></div>
+    <div id="langsw"></div>
+    <div id="pystatus" title="Python"><span class="dot"></span><span id="pystatustext" data-i18n>Đang tải Python…</span></div>
   </header>
   <div id="toolbar"></div>
   <div id="main">
     <aside id="explorer">
       <div class="panehead">Project Explorer</div>
       <div id="explist"></div>
-      <div class="panehead small">Dữ liệu mẫu</div>
+      <div class="panehead small" data-i18n>Dữ liệu mẫu</div>
       <div id="samplelist"></div>
     </aside>
     <section id="workspace">
@@ -33,14 +34,15 @@
       <div id="winarea"><div id="welcome"></div></div>
     </section>
   </div>
-  <div id="resultsbar"><div class="panehead">Kết quả tính <button id="togglelog" class="mini">▾</button></div><div id="results"></div></div>
-  <footer id="statusbar"><span id="statusmsg">Sẵn sàng</span><span id="coords"></span></footer>
+  <div id="resultsbar"><div class="panehead" data-i18n>Kết quả tính <button id="togglelog" class="mini">▾</button></div><div id="results"></div></div>
+  <footer id="statusbar"><span id="statusmsg" data-i18n>Sẵn sàng</span><span id="coords"></span></footer>
 </div>
 <div id="menupop" class="popup" hidden></div>
 <div id="ctxmenu" class="popup" hidden></div>
 <div id="modalwrap" hidden><div id="modal" role="dialog" aria-modal="true"></div></div>
 <input type="file" id="fileinput" hidden accept=".csv,.tsv,.txt,.dat,.xlsx,.xls,.xlsm,.ods,.json">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="i18n.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

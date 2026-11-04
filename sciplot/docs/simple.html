@@ -105,7 +105,7 @@ footer{color:var(--muted);font-size:12px;text-align:center;padding:0 16px 24px}
 
     </div>
     <div id="src-paste" style="display:none">
-      <textarea id="pastebox" placeholder="Bôi đen vùng dữ liệu trong Excel/Origin (gồm dòng tiêu đề) → Ctrl+C → dán vào đây"></textarea>
+      <textarea id="pastebox" placeholder="Bôi đen vùng dữ liệu trong Excel (gồm dòng tiêu đề) → Ctrl+C → dán vào đây"></textarea>
       <div class="btns" style="margin-top:6px"><button class="btn" id="pastebtn">Dùng dữ liệu đã dán</button></div>
     </div>
     <div id="src-sample" style="display:none">
@@ -136,8 +136,8 @@ footer{color:var(--muted);font-size:12px;text-align:center;padding:0 16px 24px}
   <div class="card">
     <h2>4. Giao diện</h2>
     <label class="f"><span>Khung hình</span><select id="theme">
-      <option value="origin">origin – khung kín 4 cạnh, tick ra ngoài</option>
-      <option value="origin-in">origin-in – khung kín, tick vào trong 4 cạnh</option>
+      <option value="boxed">khung kín 4 cạnh, tick ra ngoài</option>
+      <option value="boxed-in">khung kín, tick vào trong 4 cạnh</option>
       <option value="classic">classic – chỉ trục trái/dưới (ggplot2)</option>
       <option value="bw">bw – khung + lưới</option>
       <option value="minimal">minimal</option></select></label>
@@ -278,7 +278,7 @@ function aoaToCsv(aoa, skip, nhdr, dec = ".") {
   if (auto) {
     // bỏ các dòng ghi chú ở đầu (chỉ 1 ô có chữ, trong khi bảng có nhiều cột)
     while (rows.length > 2 && width > 1 && filled(rows[0]) <= 1 && filled(rows[1]) > 1) rows = rows.slice(1);
-    // dòng tiêu đề = các dòng đầu không phải số (tên, đơn vị, ghi chú kiểu Origin), tối đa 3
+    // dòng tiêu đề = các dòng đầu không phải số (tên, đơn vị, ghi chú), tối đa 3
     nhdr = 0;
     while (nhdr < 3 && nhdr < rows.length - 1) {
       const r = rows[nhdr], n = filled(r), k = r.filter(isNum).length;
@@ -410,7 +410,7 @@ function ingestSheet(wb, sheetName, name, filename, skip, nhdr) {
 /* ------------------------------------------------------------------ plot types (schema) */
 const REFS = ["RHE", "SHE", "Ag/AgCl", "Ag/AgCl(3M)", "Ag/AgCl(3.5M)", "SCE", "Hg/HgO", "Hg/HgO(0.1M)", "Hg/Hg2SO4"];
 const PALETTES = ["auto", "okabe", "pastel", "npg", "aaas", "bold", "tableau", "gray", "viridis", "plasma", "coolwarm"];
-const SERIES_FMT = { k: "_fmt", label: "Dạng bảng", t: "sel", opts: [["long", "dài: cột x, cột y, cột tên mẫu"], ["wide", "rộng: 1 cột x + mỗi mẫu 1 cột y"], ["pairs", "cặp cột: x1, y1, x2, y2… (kiểu Origin)"]],
+const SERIES_FMT = { k: "_fmt", label: "Dạng bảng", t: "sel", opts: [["long", "dài: cột x, cột y, cột tên mẫu"], ["wide", "rộng: 1 cột x + mỗi mẫu 1 cột y"], ["pairs", "cặp cột: x1, y1, x2, y2…"]],
   def: info => info.cols.some(c => /^(sample|scan|mẫu|mau)$/i.test(c)) ? "long" : "wide" };
 const echem = [
   { k: "ref", label: "Điện cực so sánh khi đo", t: "sel", opts: REFS.map(r => [r, r]), def: "RHE" },
@@ -462,7 +462,7 @@ const TYPES = [
     { k: "err_col", label: "Cột SD/SE có sẵn", t: "num", none: true, guess: ["sd", "se", "std", "error"], show: o => o.stat === "identity" },
     { k: "points", label: "Hiện từng điểm dữ liệu", t: "bool", show: o => o.stat === "mean" },
     { k: "position", label: "Sắp xếp", t: "sel", opts: [["dodge", "cạnh nhau"], ["stack", "chồng lên"]], def: "dodge" },
-    { k: "_grad", label: "Tô gradient (kiểu Origin)", t: "bool", def: info => info.cols.includes("rate") },
+    { k: "_grad", label: "Tô gradient", t: "bool", def: info => info.cols.includes("rate") },
     { k: "_g1", label: "Màu trên", t: "color", def: "#F2A0A0", show: o => o._grad }, { k: "_g2", label: "Màu dưới", t: "color", def: "#F0D9A0", show: o => o._grad },
     { k: "value_labels", label: "Ghi giá trị trên cột", t: "bool", def: info => info.cols.includes("rate") },
     { k: "value_fmt", label: "Định dạng số (vd {:.2f}, {:.4g})", t: "text", def: "{:.4g}", show: o => o.value_labels },

@@ -22,7 +22,7 @@ SAMPLES = {
     "de_results_demo.csv (volcano)": "de_results_demo.csv",
     "rnaseq_top20_demo.csv (heatmap)": "rnaseq_top20_demo.csv",
     "catalyst_kinetics_demo.csv (line)": "catalyst_kinetics_demo.csv",
-    "co_oxidation_conversion.csv (line kiểu Origin)": "co_oxidation_conversion.csv",
+    "co_oxidation_conversion.csv (line + symbol)": "co_oxidation_conversion.csv",
     "co_oxidation_rate.csv (bar gradient)": "co_oxidation_rate.csv",
     "xrd_demo.csv (XRD xếp chồng)": "xrd_demo.csv",
     "lsv_oer_demo.csv (LSV / Tafel)": "lsv_oer_demo.csv",
@@ -58,7 +58,7 @@ AUTO_TYPE = {"xrd_demo.csv": "spectra", "lsv_oer_demo.csv": "lsv", "cv_scanrate_
 
 st.set_page_config(page_title="SciPlot Studio", layout="wide")
 st.title("SciPlot Studio")
-st.caption("Vẽ hình khoa học chuẩn bài báo (khung kiểu Origin) — ggplot2 → Python, kèm XRD, LSV, Tafel, CV, EIS, BET, Tauc")
+st.caption("Vẽ hình khoa học chuẩn bài báo (khung kín 4 cạnh) — ggplot2 → Python, kèm XRD, LSV, Tafel, CV, EIS, BET, Tauc")
 
 # ---------------- data ----------------
 with st.sidebar:
@@ -101,8 +101,8 @@ with st.sidebar:
 
     st.header("3. Giao diện")
     theme = st.selectbox("Theme (khung)", sp.THEMES, format_func=lambda t: {
-        "origin": "origin – khung kín 4 cạnh, tick ra ngoài",
-        "origin-in": "origin-in – khung kín, tick vào trong 4 cạnh",
+        "boxed": "khung kín 4 cạnh, tick ra ngoài",
+        "boxed-in": "khung kín, tick vào trong 4 cạnh",
         "classic": "classic – chỉ trục trái/dưới", "bw": "bw – khung + lưới", "minimal": "minimal"}[t])
     font = st.selectbox("Font", ["sans", "serif"], format_func=lambda f: {"sans": "Arial / Sans", "serif": "Times New Roman"}[f])
     fontsize = st.slider("Cỡ chữ", 6, 18, 11)
@@ -355,7 +355,7 @@ with left:
         opts["psd_y"] = pick("PSD: cột dV/dlogD", num_cols, guess(["dVdlogD"], num_cols), none=True)
 
     if kind == "bar":
-        if st.checkbox("Tô gradient (kiểu Origin)", data_name.startswith("co_oxidation")):
+        if st.checkbox("Tô gradient", data_name.startswith("co_oxidation")):
             g1, g2 = st.columns(2)
             opts["gradient"] = f"{g1.color_picker('Màu trên', '#F2A0A0')},{g2.color_picker('Màu dưới', '#F0D9A0')}"
             opts["edgecolor"] = "#666666"

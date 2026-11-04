@@ -91,7 +91,7 @@ def _prep(opts):
     return o
 
 
-def render(kind, opts_json, theme="origin", font="sans", fontsize=11, preview_dpi=110):
+def render(kind, opts_json, theme="boxed", font="sans", fontsize=11, preview_dpi=110):
     opts = json.loads(opts_json)
     data_name = opts.pop("_data", "main")
     if STATE["fig"] is not None:
