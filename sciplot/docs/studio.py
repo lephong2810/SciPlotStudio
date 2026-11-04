@@ -188,6 +188,7 @@ def _plot_xy(G, ax, items, styles):
     handles = []
     if kind == "column":
         return _plot_columns(G, ax, items, styles)
+    nfit = 0
     for d, st, s in zip(items, styles, G["series"]):
         target = ax
         if s.get("y2"):
@@ -215,7 +216,97 @@ def _plot_xy(G, ax, items, styles):
         else:
             (h,) = target.plot(x[m], d["y"][m], **kw)
             handles.append(h)
+        if s.get("fit") and d["xcat"] is None:
+            _fit_series(ax, target, x[m], d["y"][m], s, st, d["label"], nfit)
+            nfit += 1
     return ax2, handles
+
+
+def _num(v):
+    """Số cho phương trình: 4 chữ số có nghĩa, dạng ×10ⁿ khi quá lớn/nhỏ (mathtext)."""
+    if not np.isfinite(v):
+        return "nan"
+    if v == 0:
+        return "0"
+    e = int(math.floor(math.log10(abs(v))))
+    if -3 <= e < 4:
+        return f"{v:.4g}"
+    mnt = v / 10 ** e
+    return rf"{mnt:.3g}\times10^{{{e}}}"
+
+
+FIT_DEG = {"linear": 1, "linear0": 1, "poly2": 2, "poly3": 3}
+
+
+def _fit_series(ax, target, x, y, s, st, label, k):
+    kind = s["fit"]
+    if kind not in FIT_DEG:
+        return
+    lo, hi = s.get("fit_from"), s.get("fit_to")
+    w = np.ones(len(x), bool)
+    if lo not in (None, ""):
+        w &= x >= float(lo)
+    if hi not in (None, ""):
+        w &= x <= float(hi)
+    xf, yf = x[w], y[w]
+    deg = FIT_DEG[kind]
+    n = len(xf)
+    if n < (2 if kind == "linear0" else deg + 2):
+        return
+    if kind == "linear0":  # y = a·x (qua gốc toạ độ)
+        a = float((xf @ yf) / (xf @ xf))
+        coef = np.array([a, 0.0])
+        yhat = a * xf
+        dof = max(n - 1, 1)
+        s2 = float(((yf - yhat) ** 2).sum() / dof)
+        se = np.array([math.sqrt(s2 / float(xf @ xf)), np.nan])
+    else:
+        X = np.vander(xf, deg + 1)
+        coef, *_ = np.linalg.lstsq(X, yf, rcond=None)
+        yhat = X @ coef
+        dof = max(n - deg - 1, 1)
+        s2 = float(((yf - yhat) ** 2).sum() / dof)
+        try:
+            se = np.sqrt(np.diag(s2 * np.linalg.inv(X.T @ X)))
+        except np.linalg.LinAlgError:
+            se = np.full(deg + 1, np.nan)
+    ss_res = float(((yf - yhat) ** 2).sum())
+    ss_tot = float(((yf - yf.mean()) ** 2).sum())
+    r2 = 1 - ss_res / ss_tot if ss_tot > 0 else np.nan
+    r2adj = 1 - (1 - r2) * (n - 1) / dof if np.isfinite(r2) and kind != "linear0" else np.nan
+    # đường fit
+    x0, x1 = (xf.min(), xf.max()) if not s.get("fit_extend") else (min(ax.get_xlim()), max(ax.get_xlim()))
+    xs = np.linspace(x0, x1, 200)
+    ys = np.polyval(coef, xs)
+    color = s.get("fit_color") or st["color"]
+    target.plot(xs, ys, color=color, lw=float(s.get("fit_lw") or 1.4), ls={"dash": "--", "dot": ":", "solid": "-"}.get(s.get("fit_ls") or "solid", "-"),
+                zorder=4, label="_fit")
+    # phương trình + R² (kéo được)
+    pw = [1] if kind == "linear0" else list(range(deg, -1, -1))
+    cs = [coef[0]] if kind == "linear0" else list(coef)
+    parts = []
+    for i, (p_, c_) in enumerate(zip(pw, cs)):
+        term = _num(abs(c_)) + ("" if p_ == 0 else "x" if p_ == 1 else f"x^{{{p_}}}")
+        parts.append(("-" if c_ < 0 else "") + term if i == 0 else (" - " if c_ < 0 else " + ") + term)
+    eq = "y = " + "".join(parts)
+    txt = f"${eq}$" + chr(10) + f"$R^2 = {r2:.4f}$"
+    if s.get("fit_eq", True):
+        pos = s.get("fit_pos") or [0.45, 0.30 + 0.15 * k]
+        ax.text(float(pos[0]), float(pos[1]), txt, transform=ax.transAxes, ha="left", va="top", color=color,
+                zorder=26, gid=f"fit:{s.get('_idx', k)}",
+                fontsize=float(s["fit_size"]) if s.get("fit_size") else None)
+    res = getattr(ax, "_sciplot_results", {})
+    names = ["a", "b"] if kind in ("linear", "linear0") else [f"a{p_}" for p_ in range(deg, -1, -1)]
+    row = {"Kiểu fit": {"linear": "y = ax + b", "linear0": "y = ax", "poly2": "bậc 2", "poly3": "bậc 3"}[kind]}
+    for nm, c_, e_ in zip(names, coef, se):
+        if kind == "linear0" and nm == "b":
+            continue
+        row[nm] = float(c_)
+        row[f"SE({nm})"] = float(e_) if np.isfinite(e_) else None
+    row.update({"R²": float(r2) if np.isfinite(r2) else None, "R² hiệu chỉnh": float(r2adj) if np.isfinite(r2adj) else None,
+                "n": int(n)})
+    res[label] = row
+    ax._sciplot_results = res
 
 
 def _plot_columns(G, ax, items, styles):
@@ -486,7 +577,7 @@ def _default_ylabel(items, series):
 
 def _draw(G, ax):
     kind = G["kind"]
-    series = [s for s in G.get("series", []) if s.get("visible", True)]
+    series = [dict(s, _idx=i) for i, s in enumerate(G.get("series", [])) if s.get("visible", True)]
     G = {**G, "series": series}
     items = [_series_data(G, s) for s in series]
     styles = [_style(G, i, s) for i, s in enumerate(series)]
@@ -604,11 +695,13 @@ def render_graph(graph_json: str, dpi: float = 110) -> str:
     try:
         rr = sp.results(ax)
         if len(rr):
-            rr = rr.round(4)
+            pass  # giữ đủ chữ số; giao diện tự hiển thị 6 chữ số có nghĩa
             if isinstance(rr, pd.Series):
                 res = [{"Mẫu": str(k), "Giá trị": (None if not np.isfinite(v) else float(v))} for k, v in rr.items()]
             else:
-                res = [{"Mẫu": str(k), **{str(c): (None if pd.isna(v) else float(v)) for c, v in row.items()}}
+                cv = lambda v: None if v is None or (isinstance(v, float) and not np.isfinite(v)) else \
+                    (float(v) if isinstance(v, (int, float, np.integer, np.floating)) else str(v))
+                res = [{"Mẫu": str(k), **{str(c): cv(v) for c, v in row.items()}}
                        for k, row in rr.iterrows()]
     except Exception:
         res = []

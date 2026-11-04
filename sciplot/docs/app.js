@@ -272,6 +272,7 @@ const ICONS = {
   save: '<svg viewBox="0 0 20 20" fill="none" stroke="#333" stroke-width="1.6"><path d="M3 3h11l3 3v11H3z"/><path d="M6 3v5h7V3M6 17v-5h8v5"/></svg>',
   importf: '<svg viewBox="0 0 20 20" fill="none" stroke="#333" stroke-width="1.6"><path d="M10 13V3M6 7l4-4 4 4"/><rect x="3" y="12" width="14" height="5"/></svg>',
   details: '<svg viewBox="0 0 20 20" fill="none" stroke="#333" stroke-width="1.6"><circle cx="10" cy="10" r="3"/><path d="M10 2v3M10 15v3M2 10h3M15 10h3M4.3 4.3l2.1 2.1M13.6 13.6l2.1 2.1M4.3 15.7l2.1-2.1M13.6 6.4l2.1-2.1"/></svg>',
+  fit: '<svg viewBox="0 0 20 20"><path d="M2 17L18 4" stroke="#d62728" stroke-width="1.8"/><g fill="#2f6fd6"><circle cx="4" cy="14" r="1.8"/><circle cx="8" cy="12.5" r="1.8"/><circle cx="11" cy="8" r="1.8"/><circle cx="15" cy="7" r="1.8"/></g></svg>',
   install: '<svg viewBox="0 0 20 20" fill="none" stroke="#333" stroke-width="1.6"><rect x="3" y="3" width="14" height="14" rx="3"/><path d="M10 6v7M7 10l3 3 3-3"/></svg>',
 };
 let tool = "pointer";
@@ -307,6 +308,12 @@ const MENUS = () => [
     ["Copy Format (sao chép định dạng)", () => copyFormat()], ["Paste Format (dán định dạng)", () => pasteFormat()],
     ["Lưu làm template…", () => saveTemplate()], ["Áp dụng template…", () => applyTemplateDialog()], "-",
     ["Nhân bản graph", () => duplicateGraph()],
+  ]],
+  ["Analysis", [
+    ["Fit tuyến tính / đa thức (y = ax + b, R²)…", () => fitDialog(), "Ctrl+L"],
+    ["Bỏ mọi đường fit", () => { const g = activeGraph(); if (g) mutate(() => g.series.forEach(clearFit)); }], "-",
+    ["Set Column Values (công thức)…", () => formulaDialog(), "Ctrl+Q"],
+    ["Đưa kết quả tính vào workbook", () => { const b = $("#res2book"); if (b) b.click(); else status("Chưa có kết quả tính nào"); }],
   ]],
   ["Help", [
     ["Hướng dẫn nhanh", () => helpDialog()], ["Phím tắt", () => shortcutsDialog()],
@@ -347,7 +354,7 @@ function buildToolbar() {
     ["pointer", "Chọn / kéo (Esc)", () => setTool("pointer"), null, "tool"], ["zoom", "Phóng to vùng (kéo chuột)", () => setTool("zoom"), null, "tool"],
     ["text", "Thêm chữ (bấm vào hình)", () => setTool("text"), null, "tool"], ["hline", "Đường ngang", () => setTool("hline"), null, "tool"],
     ["vline", "Đường dọc", () => setTool("vline"), null, "tool"], ["rescale", "Rescale (Ctrl+R)", rescale], "|",
-    ["details", "Plot Details (F4)", () => plotDetails(), "Plot Details"], ["export", "Xuất hình (Ctrl+E)", () => exportDialog(), "Xuất"],
+    ["fit", "Fit tuyến tính y = ax + b, R² (Ctrl+L)", () => fitDialog(), "Fit"], ["details", "Plot Details (F4)", () => plotDetails(), "Plot Details"], ["export", "Xuất hình (Ctrl+E)", () => exportDialog(), "Xuất"],
     ["copy", "Sao chép hình", copyImage], "|", ["install", "Cài như app", installApp, "Cài app"],
   ];
   $("#toolbar").innerHTML = T.map((t, i) => t === "|" ? '<span class="sep"></span>' :
@@ -762,14 +769,57 @@ function formulaDialog() {
 /* ================================================================== graph window */
 const gview = {};  // id → {sel, hits, axes, natural:{w,h}, results}
 function buildGraphWin(g, w) {
-  w.innerHTML = `<div class="graphwin"><div class="gbar"><span class="gkind"></span><span class="hint">Bấm đúp để chỉnh · kéo chú giải/chữ · F4 Plot Details · Ctrl+R rescale</span></div>
+  w.innerHTML = `<div class="graphwin"><div class="gbar"><span class="gkind"></span>
+    <span class="zoomctl" title="Phóng to / thu nhỏ hình (⌘/Ctrl + cuộn chuột, ⌘/Ctrl + / −, ⌘/Ctrl 0). Không đổi kích thước khi xuất.">
+      <button class="mini" data-z="out" aria-label="Thu nhỏ">−</button><select data-z="sel"></select><button class="mini" data-z="in" aria-label="Phóng to">+</button>
+      <button class="mini" data-z="fit">Vừa khung</button></span>
+    <span class="hint">Bấm đúp để chỉnh · kéo chú giải/chữ · F4 Plot Details · Ctrl+R rescale</span></div>
     <div class="canvaswrap"><div class="page"><img alt="Graph"><div class="overlay ${tool === "pointer" ? "" : tool}"></div></div></div></div>`;
   const ov = $(".overlay", w);
+  $('[data-z="in"]', w).onclick = () => setZoom(g.id, gV(g.id).zoom * 1.25);
+  $('[data-z="out"]', w).onclick = () => setZoom(g.id, gV(g.id).zoom / 1.25);
+  $('[data-z="fit"]', w).onclick = () => zoomFit(g.id);
+  $('[data-z="sel"]', w).onchange = e => { const v = e.target.value; if (v === "fit") zoomFit(g.id); else setZoom(g.id, +v / 100); };
+  $(".canvaswrap", w).addEventListener("wheel", e => {
+    if (!(e.ctrlKey || e.metaKey)) return;           // cuộn bình thường = cuộn trang; ⌘/Ctrl + cuộn (hoặc chụm 2 ngón) = zoom hình
+    e.preventDefault();
+    setZoom(g.id, gV(g.id).zoom * Math.exp(-e.deltaY * (e.ctrlKey && !e.metaKey && Math.abs(e.deltaY) < 20 ? 0.012 : 0.0022)), e);
+  }, { passive: false });
+  updateZoomUI(g.id);
   ov.addEventListener("mousedown", e => graphMouseDown(g.id, e));
   ov.addEventListener("dblclick", e => graphDblClick(g.id, e));
   ov.addEventListener("mousemove", e => graphHover(g.id, e));
   ov.addEventListener("mouseleave", () => { $("#coords").textContent = ""; });
   ov.addEventListener("contextmenu", e => graphContext(g.id, e));
+}
+const ZMIN = 0.25, ZMAX = 6, ZSTEPS = [25, 50, 75, 100, 125, 150, 200, 300, 400, 600];
+function gV(id) { return gview[id] || (gview[id] = { sel: null, zoom: 1, dpi: 110 * DPR, css: 1 / DPR }); }
+const renderDpi = z => Math.round(Math.min(450, Math.max(72, 110 * DPR * z)));
+function setZoom(id, z, anchorEvt) {
+  const V = gV(id), w = $(`.win[data-id="${id}"]`); if (!w) return;
+  z = Math.min(ZMAX, Math.max(ZMIN, z));
+  const wrap = $(".canvaswrap", w), page = $(".page", w), img = $("img", w);
+  let ax = null;
+  if (anchorEvt && img.naturalWidth) { const r = page.getBoundingClientRect(); ax = [anchorEvt.clientX - r.left, anchorEvt.clientY - r.top, anchorEvt.clientX, anchorEvt.clientY]; }
+  const ratio = z / V.zoom;
+  V.zoom = z; V.css = 110 * z / V.dpi;
+  if (img.naturalWidth) { img.style.width = img.naturalWidth * V.css + "px"; img.style.height = img.naturalHeight * V.css + "px"; drawHits(id); }
+  if (ax) { const r2 = page.getBoundingClientRect(); wrap.scrollLeft += (r2.left + ax[0] * ratio) - ax[2]; wrap.scrollTop += (r2.top + ax[1] * ratio) - ax[3]; }
+  updateZoomUI(id);
+  clearTimeout(V.zt);
+  if (Math.abs(renderDpi(z) - V.dpi) > 4) V.zt = setTimeout(() => { const g = byId(id); if (g) renderGraph(g); }, 260);  // vẽ lại sắc nét ở độ phân giải mới
+}
+function zoomFit(id) {
+  const V = gV(id), w = $(`.win[data-id="${id}"]`); const img = $("img", w), wrap = $(".canvaswrap", w);
+  if (!img.naturalWidth) return;
+  const cw = img.naturalWidth * V.css, ch = img.naturalHeight * V.css;
+  setZoom(id, V.zoom * Math.min((wrap.clientWidth - 56) / cw, (wrap.clientHeight - 56) / ch));
+}
+function updateZoomUI(id) {
+  const w = $(`.win[data-id="${id}"]`); if (!w) return; const sel = $('[data-z="sel"]', w); if (!sel) return;
+  const pct = Math.round(gV(id).zoom * 100);
+  sel.innerHTML = (ZSTEPS.includes(pct) ? "" : `<option value="${pct}" selected>${pct}%</option>`) +
+    ZSTEPS.map(v => `<option value="${v}" ${v === pct ? "selected" : ""}>${v}%</option>`).join("") + '<option value="fit">Vừa khung</option>';
 }
 let renderBusy = false, renderQueued = null;
 function renderGraph(g) {
@@ -782,11 +832,12 @@ function renderGraph(g) {
   let busy = $(".busy", w); if (!busy) { busy = document.createElement("div"); busy.className = "busy"; busy.textContent = "Đang vẽ…"; $(".canvaswrap", w).appendChild(busy); }
   setTimeout(() => {
     try {
-      const out = JSON.parse(py("render_graph", JSON.stringify(g), 110 * DPR));
+      const V = gV(g.id);
+      const dpi = renderDpi(V.zoom);
+      const out = JSON.parse(py("render_graph", JSON.stringify(g), dpi));
       const img = $("img", page);
-      img.onload = () => { img.style.width = (img.naturalWidth / DPR) + "px"; img.style.height = (img.naturalHeight / DPR) + "px"; drawHits(g.id); };
+      img.onload = () => { V.dpi = dpi; V.css = 110 * V.zoom / dpi; img.style.width = (img.naturalWidth * V.css) + "px"; img.style.height = (img.naturalHeight * V.css) + "px"; drawHits(g.id); };
       img.src = "data:image/png;base64," + out.png;
-      const V = gview[g.id] || (gview[g.id] = { sel: null });
       V.hits = out.hits; V.axes = out.axes; V.results = out.results;
       const err = $(".gerr", w); if (err) err.remove();
       showResults(out.results, g);
@@ -803,7 +854,7 @@ function renderGraph(g) {
 function pyErr(e) { const s = String(e && e.message || e); return s.trim().split("\n").filter(Boolean).slice(-1)[0] || s; }
 function drawHits(id) {
   const V = gview[id]; const w = $(`.win[data-id="${id}"]`); if (!V || !w) return;
-  const ov = $(".overlay", w); const sc = 1 / DPR;
+  const ov = $(".overlay", w); const sc = gV(id).css;
   const draggable = new Set(["legend", "text"]);
   ov.innerHTML = [...V.hits].sort((a, b) => a.prio - b.prio).map((h, i) =>
     `<div class="hit${draggable.has(h.kind) ? " drag" : ""}${sameHit(V.sel, h) ? " selected" : ""}" data-h="${V.hits.indexOf(h)}" title="${esc(hitTitle(h))}" style="left:${h.box[0] * sc}px;top:${h.box[1] * sc}px;width:${(h.box[2] - h.box[0]) * sc}px;height:${(h.box[3] - h.box[1]) * sc}px;z-index:${h.prio}"></div>`).join("");
@@ -818,7 +869,7 @@ function hitAt(id, e) {
   const t = e.target.closest(".hit"); const V = gview[id];
   return t && V ? V.hits[+t.dataset.h] : null;
 }
-function localXY(id, e) { const ov = $(`.win[data-id="${id}"] .overlay`); const r = ov.getBoundingClientRect(); return [(e.clientX - r.left) * DPR, (e.clientY - r.top) * DPR]; }
+function localXY(id, e) { const ov = $(`.win[data-id="${id}"] .overlay`); const r = ov.getBoundingClientRect(); const c = gV(id).css; return [(e.clientX - r.left) / c, (e.clientY - r.top) / c]; }
 function pxToData(id, px, py_, axisKey = "y") {
   const V = gview[id]; const A = V && V.axes && V.axes[0]; if (!A) return null;
   const [x0, y0, x1, y1] = A.box;
@@ -855,11 +906,11 @@ function graphMouseDown(id, e) {
   }
 }
 function startDrag(id, e, h, x0, y0, clickSel) {
-  const w = $(`.win[data-id="${id}"]`); const ov = $(".overlay", w); const sc = 1 / DPR;
+  const w = $(`.win[data-id="${id}"]`); const ov = $(".overlay", w); const sc = gV(id).css;
   const ghost = document.createElement("div"); ghost.className = "ghost"; let moved = false;
   const bw = h.box[2] - h.box[0], bh = h.box[3] - h.box[1];
   const place = (dx, dy) => { ghost.style.left = (h.box[0] + dx) * sc + "px"; ghost.style.top = (h.box[1] + dy) * sc + "px"; ghost.style.width = bw * sc + "px"; ghost.style.height = bh * sc + "px"; };
-  const mm = ev => { const [x, y] = localXY(id, ev); const dx = x - x0, dy = y - y0; if (!moved && Math.hypot(dx, dy) > 3 * DPR) { moved = true; ov.appendChild(ghost); } if (moved) place(dx, dy); };
+  const mm = ev => { const [x, y] = localXY(id, ev); const dx = x - x0, dy = y - y0; if (!moved && Math.hypot(dx, dy) * gV(id).css > 3) { moved = true; ov.appendChild(ghost); } if (moved) place(dx, dy); };
   const mu = ev => {
     document.removeEventListener("mousemove", mm); document.removeEventListener("mouseup", mu); ghost.remove();
     if (!moved) return;
@@ -869,13 +920,14 @@ function startDrag(id, e, h, x0, y0, clickSel) {
     const g = byId(id);
     mutate(() => {
       if (h.kind === "legend") { g.legend = g.legend || {}; g.legend.loc = [fx, fy]; }
+      else if (String(h.id).startsWith("fit:")) { const si = g.series[+h.id.slice(4)]; if (si) si.fit_pos = [fx, fy]; }
       else { const t = g.texts.find(t => t.id === h.id); if (t) { t.x = fx; t.y = fy; } }
     });
   };
   document.addEventListener("mousemove", mm); document.addEventListener("mouseup", mu);
 }
 function startRubber(id, e, x0, y0) {
-  const w = $(`.win[data-id="${id}"]`); const ov = $(".overlay", w); const sc = 1 / DPR;
+  const w = $(`.win[data-id="${id}"]`); const ov = $(".overlay", w); const sc = gV(id).css;
   const rb = document.createElement("div"); rb.className = "rubber"; ov.appendChild(rb);
   const mm = ev => { const [x, y] = localXY(id, ev); rb.style.left = Math.min(x, x0) * sc + "px"; rb.style.top = Math.min(y, y0) * sc + "px"; rb.style.width = Math.abs(x - x0) * sc + "px"; rb.style.height = Math.abs(y - y0) * sc + "px"; };
   const mu = ev => {
@@ -898,7 +950,7 @@ function graphDblClick(id, e) {
   if (!h) return pageDialog(g);
   const map = { xaxis: () => axisDialog("x", g), xlabel: () => axisDialog("x", g, "label"), yaxis: () => axisDialog("y", g), ylabel: () => axisDialog("y", g, "label"),
     y2axis: () => axisDialog("y2", g), y2label: () => axisDialog("y2", g, "label"), legend: () => legendDialog(g), legend_entry: () => plotDetails(g, h.index),
-    title: () => titleDialog(g), text: () => textDialog(g, h.id), plot: () => plotDetails(g) };
+    title: () => titleDialog(g), text: () => String(h.id).startsWith("fit:") ? plotDetails(g, +h.id.slice(4)) : textDialog(g, h.id), plot: () => plotDetails(g) };
   (map[h.kind] || (() => plotDetails(g)))();
 }
 function graphContext(id, e) {
@@ -911,7 +963,9 @@ function graphContext(id, e) {
     [g.legend && g.legend.show === false ? "Hiện chú giải" : "Ẩn chú giải", () => mutate(() => { g.legend = g.legend || {}; g.legend.show = g.legend.show === false; })],
     ["Tiêu đề…", () => titleDialog(g)], "-", ["Rescale", () => rescale()], ["Sao chép hình", () => copyImage()], ["Xuất hình…", () => exportDialog()],
   ];
-  if (h && h.kind === "text") items.unshift(["Sửa chữ…", () => textDialog(g, h.id)], ["Xoá chữ này", () => mutate(() => { g.texts = g.texts.filter(t => t.id !== h.id); })], "-");
+  if (h && h.kind === "text" && String(h.id).startsWith("fit:")) { const i = +h.id.slice(4); items.unshift(["Tuỳ chỉnh fit…", () => plotDetails(g, i)], ["Ẩn phương trình", () => mutate(() => { g.series[i].fit_eq = false; })], ["Xoá đường fit", () => mutate(() => { clearFit(g.series[i]); })], "-"); }
+  else if (h && h.kind === "text") items.unshift(["Sửa chữ…", () => textDialog(g, h.id)], ["Xoá chữ này", () => mutate(() => { g.texts = g.texts.filter(t => t.id !== h.id); })], "-");
+  if (["line", "scatter", "linesymbol", "area"].includes(g.kind)) items.splice(items.length - 4, 0, ["Fit tuyến tính / đa thức…", () => fitDialog(g)]);
   openPopup($("#ctxmenu"), items, e.clientX, e.clientY);
 }
 function rescale() {
@@ -921,12 +975,17 @@ function rescale() {
 }
 function deleteSelected() {
   const g = activeGraph(); if (!g) return; const V = gview[g.id]; if (!V || !V.sel) return;
-  if (V.sel.kind === "text") mutate(() => { g.texts = g.texts.filter(t => t.id !== V.sel.id); V.sel = null; });
+  if (V.sel.kind === "text" && String(V.sel.id).startsWith("fit:")) mutate(() => { g.series[+V.sel.id.slice(4)].fit_eq = false; V.sel = null; });
+  else if (V.sel.kind === "text") mutate(() => { g.texts = g.texts.filter(t => t.id !== V.sel.id); V.sel = null; });
   else if (V.sel.kind === "legend") mutate(() => { g.legend = g.legend || {}; g.legend.show = false; V.sel = null; });
   else if (V.sel.kind === "title") mutate(() => { g.title = ""; V.sel = null; });
 }
 function nudge(dx, dy) {
   const g = activeGraph(); if (!g) return false; const V = gview[g.id]; if (!V || !V.sel) return false;
+  if (V.sel.kind === "text" && String(V.sel.id).startsWith("fit:")) {
+    const si = g.series[+V.sel.id.slice(4)]; const h = V.hits.find(h => h.kind === "text" && h.id === V.sel.id); const A = V.axes[0];
+    mutate(() => { const cur = si.fit_pos || [(h.box[0] - A.box[0]) / (A.box[2] - A.box[0]), (A.box[3] - h.box[1]) / (A.box[3] - A.box[1])]; si.fit_pos = [+(cur[0] + dx).toFixed(4), +(cur[1] + dy).toFixed(4)]; }); return true;
+  }
   if (V.sel.kind === "text") { mutate(() => { const t = g.texts.find(t => t.id === V.sel.id); if (t) { t.x = +(t.x + dx).toFixed(4); t.y = +(t.y + dy).toFixed(4); } }); return true; }
   if (V.sel.kind === "legend") {
     const h = V.hits.find(h => h.kind === "legend"); const A = V.axes[0];
@@ -1150,6 +1209,46 @@ const KIND_OPTS = {
     { k: "cutree_rows", label: "Tách hàng thành … cụm", t: "number" }, { k: "cutree_cols", label: "Tách cột thành … cụm", t: "number" }, { k: "show_values", label: "Ghi giá trị", t: "bool" }],
   volcano: [{ k: "fc_thr", label: "Ngưỡng |log2FC|", t: "number", ph: "1" }, { k: "p_thr", label: "Ngưỡng p", t: "number", ph: "0.05" }, { k: "top", label: "Số gene gắn nhãn", t: "number", ph: "10" }],
 };
+const FIT_TYPES = [["", "không"], ["linear", "Tuyến tính  y = ax + b"], ["linear0", "Tuyến tính qua gốc  y = ax"], ["poly2", "Đa thức bậc 2"], ["poly3", "Đa thức bậc 3"]];
+const FIT_FIELDS = p => [
+  { k: p + "fit", label: "Fit (hồi quy)", t: "sel", opts: FIT_TYPES },
+  { k: p + "fit_from", label: "Fit từ X =", t: "number", ph: "đầu dữ liệu", show: v => v[p + "fit"] },
+  { k: p + "fit_to", label: "đến X =", t: "number", ph: "cuối dữ liệu", show: v => v[p + "fit"] },
+  { k: p + "fit_eq", label: "Ghi phương trình và R² lên hình", t: "bool", show: v => v[p + "fit"] },
+  { k: p + "fit_extend", label: "Kéo dài đường fit hết trục X", t: "bool", show: v => v[p + "fit"] },
+  { k: p + "fit_color", label: "Màu đường fit", t: "color", auto: true, show: v => v[p + "fit"] },
+  { k: p + "fit_ls", label: "Kiểu nét fit", t: "sel", opts: [["solid", "liền —"], ["dash", "đứt – –"], ["dot", "chấm ···"]], show: v => v[p + "fit"] },
+  { k: p + "fit_lw", label: "Độ dày nét fit", t: "number", step: 0.1, ph: "1.4", show: v => v[p + "fit"] },
+  { k: p + "fit_size", label: "Cỡ chữ phương trình", t: "number", step: 0.5, ph: "theo hình", show: v => v[p + "fit"] },
+];
+const FIT_KEYS = ["fit", "fit_from", "fit_to", "fit_eq", "fit_extend", "fit_color", "fit_ls", "fit_lw", "fit_size", "fit_pos"];
+function clearFit(s) { for (const k of FIT_KEYS) delete s[k]; }
+function fitDialog(g) {
+  g = g || activeGraph(); if (!g) return status("Hãy mở một graph trước");
+  if (!["line", "scatter", "linesymbol", "area"].includes(g.kind)) {
+    if (!confirm(`Fit dùng cho hình Scatter / Line / Line + Symbol. Đổi "${g.name}" (${kindName(g.kind)}) sang Scatter để fit?`)) return;
+    mutate(() => { g.kind = "scatter"; g.opts = {}; });
+  }
+  const book = byId(g.book);
+  const nm = s => s.label || dispName(book.cols.find(c => c.name === s.y) || { name: s.y });
+  const first = g.series.find(s => s.fit) || {};
+  const v = { fit: first.fit || "linear", fit_from: first.fit_from ?? null, fit_to: first.fit_to ?? null, fit_eq: first.fit_eq !== false, fit_extend: !!first.fit_extend,
+    fit_color: first.fit_color || null, fit_ls: first.fit_ls || "solid", fit_lw: first.fit_lw ?? null, fit_size: first.fit_size ?? null };
+  g.series.forEach((s, i) => { v["s_" + i] = g.series.length === 1 || !!s.fit || !g.series.some(x => x.fit); });
+  dialog({ title: "Fit — " + g.name, values: v, okText: "Fit", fields: [
+    ...g.series.map((s, i) => ({ k: "s_" + i, label: "Series: " + nm(s), t: "bool" })),
+    ...FIT_FIELDS("").map(f => f.k === "fit" ? { ...f, label: "Kiểu fit", opts: FIT_TYPES.map(o => o[0] ? o : ["", "bỏ fit"]) } : { ...f, show: vv => vv.fit }),
+  ], extra: '<p class="note">Kết quả a, b, sai số chuẩn (SE), R² hiện ở khung Kết quả tính bên dưới, và đưa được vào workbook. Phương trình trên hình kéo đi được; bấm đúp để chỉnh.</p>',
+    onOk: vals => mutate(() => {
+      g.series.forEach((s, i) => {
+        if (!vals["s_" + i]) return;
+        if (!vals.fit) { clearFit(s); return; }
+        for (const k of FIT_KEYS) if (k !== "fit_pos") { const x = vals[k]; if (x === null || x === "" || x === undefined) delete s[k]; else s[k] = x; }
+        if (s.fit_eq === true) delete s.fit_eq;
+        if (!s.fit_extend) delete s.fit_extend;
+      });
+    }) });
+}
 const BOOL_DEFAULTS = { normalize: true, calc: true, lines: true, equal: true, scale: true, ellipse: true, points: true, cluster_rows: true, cluster_cols: true };
 function plotDetails(g, focusIndex) {
   g = g || activeGraph(); if (!g) return status("Hãy mở một graph");
@@ -1171,6 +1270,7 @@ function plotDetails(g, focusIndex) {
     ...(g.kind !== "column" ? [{ k: "lw", label: "Độ dày nét", t: "number", step: 0.1, ph: "1.6" }] : []),
     ...(generic ? [{ k: "alpha", label: "Độ đậm (0–1)", t: "number", step: 0.05, ph: "1" }, { k: "capsize", label: "Đầu thanh sai số", t: "number", step: 0.5, ph: "3" }] : []),
     ...(generic && g.kind !== "column" ? [{ k: "y2", label: "Vẽ theo trục Y bên phải", t: "bool" }] : []),
+    ...(generic && g.kind !== "column" ? FIT_FIELDS("") : []),
     { k: "visible", label: "Hiện series này", t: "bool" },
   ];
   const KO = KIND_OPTS[g.kind] || [];
@@ -1179,7 +1279,7 @@ function plotDetails(g, focusIndex) {
     name: "Series (Plot)",
     html: () => {
       const s = work.series[cur] || {};
-      const sv = { visible: true, marker: "default", fill: "solid", ls: "solid", ...s };
+      const sv = { visible: true, marker: "default", fill: "solid", ls: "solid", fit_eq: true, ...s };
       return `<div class="pdgrid"><div><div class="slist">${work.series.map((x, i) => `<div class="si${i === cur ? " on" : ""}" data-i="${i}"><span class="sw" style="background:${x.color || pal[i % pal.length]}"></span>${esc(x.label || dispName(book.cols.find(c => c.name === x.y) || { name: x.y }))}</div>`).join("") || '<div class="si">(chưa có series)</div>'}</div>
         <div class="sbtns"><button class="btn" data-sa="add">+ Thêm</button><button class="btn" data-sa="del">Xoá</button><button class="btn" data-sa="up">▲</button><button class="btn" data-sa="down">▼</button></div>
         <div class="sbtns"><button class="btn" data-sa="applyall" title="Áp kiểu ký hiệu/nét/cỡ của series này cho mọi series">Áp kiểu cho tất cả</button></div></div>
@@ -1187,6 +1287,7 @@ function plotDetails(g, focusIndex) {
     },
     read: (root) => { const s = work.series[cur]; if (!s) return; const v = readFields(root, SF, { ...s }); Object.assign(s, v); for (const k of Object.keys(s)) if (s[k] === "" || s[k] === null || s[k] === undefined) delete s[k]; if (!s.y2) delete s.y2; if (s.visible !== false) delete s.visible; },
     bind: (root, _v, redraw) => {
+      const fsel = $('[data-k="fit"]', root); if (fsel) fsel.addEventListener("change", () => { seriesTab.read(root); redraw(); });
       $$(".si[data-i]", root).forEach(el => el.onclick = () => { seriesTab.read(root); cur = +el.dataset.i; redraw(); });
       $$("[data-sa]", root).forEach(b => b.onclick = () => {
         seriesTab.read(root);
@@ -1383,6 +1484,12 @@ document.addEventListener("keydown", e => {
   if (mod && k === "r") { e.preventDefault(); rescale(); return; }
   if (mod && k === "n") { e.preventDefault(); newBookCmd(); return; }
   if (mod && k === "q") { e.preventDefault(); formulaDialog(); return; }
+  if (mod && k === "l") { e.preventDefault(); fitDialog(); return; }
+  if (mod && activeGraph() && ["=", "+", "-", "_", "0"].includes(e.key)) {   // zoom hình, không zoom cả app
+    e.preventDefault(); const g = activeGraph(); const V = gV(g.id);
+    if (e.key === "0") setZoom(g.id, 1); else setZoom(g.id, V.zoom * (e.key === "-" || e.key === "_" ? 1 / 1.25 : 1.25));
+    return;
+  }
   if (mod && e.shiftKey && k === "c") { e.preventDefault(); copyImage(); return; }
   if (e.key === "F4") { e.preventDefault(); plotDetails(); return; }
   if (e.key === "F5") { e.preventDefault(); axisDialog("x"); return; }
