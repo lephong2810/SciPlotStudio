@@ -1,3 +1,6 @@
+## Truy cập trang web sau để sử dụng: lephong2810.github.io/figures/
+- Có thể sử dụng trực tiếp trên trang web hoặc tải về thành 1 ứng dụng trên MacOS hay Windown để lần sau sử dụng offline.
+
 ## Cài như một app trên máy tính
 
 - **Safari (macOS 14 Sonoma trở lên):** mở trang, chọn menu **File → Add to Dock…**
