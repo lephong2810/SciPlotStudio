@@ -72,7 +72,7 @@ table.sheet td.num{text-align:right}
 .d-X{color:var(--x)} .d-Y{color:var(--y)} .d-yEr{color:var(--err)} .d-L{color:var(--lab)} .d-N{color:#aaa}
 .sheetfoot{padding:8px;color:var(--muted)}
 /* graph window */
-.graphwin{display:grid;grid-template-rows:auto 1fr;height:100%}
+.graphwin{display:grid;grid-template-rows:1fr;height:100%}
 .gbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:5px 10px;border-bottom:1px solid var(--line2);background:#fafbfc;font-size:12.5px;color:var(--muted)}
 .gbar .hint{margin-left:auto}
 .canvaswrap{overflow:auto;background:repeating-conic-gradient(#eef0f4 0% 25%,#f7f8fa 0% 50%) 0 0/16px 16px;display:block;text-align:center;padding:24px;position:relative}
@@ -154,3 +154,8 @@ table.sheet td.num{text-align:right}
   .fgrid{grid-template-columns:110px minmax(0,1fr)}
   .pdgrid{grid-template-columns:minmax(0,1fr)}
 }
+
+#tbzoom{display:inline-flex;align-items:center;gap:1px}
+#tbzoom select{height:26px;border:1px solid var(--line);border-radius:5px;background:#fff;font-size:12.5px;padding:0 4px;margin:0 1px;min-width:74px}
+#tbzoom.off{opacity:.4}
+#tbzoom .tb{padding:3px 4px}

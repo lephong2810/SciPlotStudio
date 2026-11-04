@@ -273,6 +273,9 @@ const ICONS = {
   importf: '<svg viewBox="0 0 20 20" fill="none" stroke="#333" stroke-width="1.6"><path d="M10 13V3M6 7l4-4 4 4"/><rect x="3" y="12" width="14" height="5"/></svg>',
   details: '<svg viewBox="0 0 20 20" fill="none" stroke="#333" stroke-width="1.6"><circle cx="10" cy="10" r="3"/><path d="M10 2v3M10 15v3M2 10h3M15 10h3M4.3 4.3l2.1 2.1M13.6 13.6l2.1 2.1M4.3 15.7l2.1-2.1M13.6 6.4l2.1-2.1"/></svg>',
   fit: '<svg viewBox="0 0 20 20"><path d="M2 17L18 4" stroke="#d62728" stroke-width="1.8"/><g fill="#2f6fd6"><circle cx="4" cy="14" r="1.8"/><circle cx="8" cy="12.5" r="1.8"/><circle cx="11" cy="8" r="1.8"/><circle cx="15" cy="7" r="1.8"/></g></svg>',
+  zoomin: '<svg viewBox="0 0 20 20" fill="none" stroke="#333" stroke-width="1.8"><path d="M4 10h12M10 4v12"/></svg>',
+  zoomout: '<svg viewBox="0 0 20 20" fill="none" stroke="#333" stroke-width="1.8"><path d="M4 10h12"/></svg>',
+  fitwin: '<svg viewBox="0 0 20 20" fill="none" stroke="#333" stroke-width="1.6"><rect x="3" y="4" width="14" height="12" rx="1.5"/><path d="M7 8l-2-2m0 0v2m0-2h2M13 12l2 2m0 0v-2m0 2h-2"/></svg>',
   install: '<svg viewBox="0 0 20 20" fill="none" stroke="#333" stroke-width="1.6"><rect x="3" y="3" width="14" height="14" rx="3"/><path d="M10 6v7M7 10l3 3 3-3"/></svg>',
 };
 let tool = "pointer";
@@ -360,6 +363,19 @@ function buildToolbar() {
   $("#toolbar").innerHTML = T.map((t, i) => t === "|" ? '<span class="sep"></span>' :
     `<button class="tb${t[4] === "tool" && t[0] === tool ? " on" : ""}" data-i="${i}" ${t[4] === "tool" ? `data-tool="${t[0]}"` : ""} title="${esc(t[1])}">${ICONS[t[0]] || ""}${t[3] ? `<span class="lbl">${esc(t[3])}</span>` : ""}</button>`).join("");
   $$("#toolbar .tb").forEach(b => b.onclick = () => T[+b.dataset.i][2]());
+  // cụm phóng to / thu nhỏ hình (chỉ tác động lên hình đang mở, không zoom cả app)
+  const inst = $$("#toolbar .tb").find(b => T[+b.dataset.i][0] === "install");
+  const z = document.createElement("span"); z.id = "tbzoom";
+  z.title = "Phóng to / thu nhỏ hình · ⌘/Ctrl + cuộn chuột · ⌘/Ctrl + / − · ⌘/Ctrl 0";
+  z.innerHTML = `<button class="tb zb" data-z="out" aria-label="Thu nhỏ">${ICONS.zoomout}</button><select data-z="sel" aria-label="Mức phóng"></select>` +
+    `<button class="tb zb" data-z="in" aria-label="Phóng to">${ICONS.zoomin}</button><button class="tb" data-z="fit" title="Vừa khung cửa sổ">${ICONS.fitwin}</button>`;
+  inst.before(z, Object.assign(document.createElement("span"), { className: "sep" }));
+  const zg = () => activeGraph();
+  $('[data-z="in"]', z).onclick = () => { const g = zg(); if (g) setZoom(g.id, gV(g.id).zoom * 1.25); };
+  $('[data-z="out"]', z).onclick = () => { const g = zg(); if (g) setZoom(g.id, gV(g.id).zoom / 1.25); };
+  $('[data-z="fit"]', z).onclick = () => { const g = zg(); if (g) zoomFit(g.id); };
+  $('[data-z="sel"]', z).onchange = e => { const g = zg(); if (!g) return; const v = e.target.value; if (v === "fit") zoomFit(g.id); else setZoom(g.id, +v / 100); };
+  updateZoomUI();
 }
 function setTool(t) {
   tool = t;
@@ -408,6 +424,7 @@ function showActive(opts = {}) {
   $$(".win").forEach(w => { if (!byId(w.dataset.id)) w.remove(); });
   $$(".win").forEach(w => w.classList.toggle("active", w.dataset.id === P.active));
   const o = activeObj();
+  updateZoomUI();
   if (!o) { showResults(null); return; }
   let w = $(`.win[data-id="${o.id}"]`);
   const fresh = !w;
@@ -769,17 +786,8 @@ function formulaDialog() {
 /* ================================================================== graph window */
 const gview = {};  // id → {sel, hits, axes, natural:{w,h}, results}
 function buildGraphWin(g, w) {
-  w.innerHTML = `<div class="graphwin"><div class="gbar"><span class="gkind"></span>
-    <span class="zoomctl" title="Phóng to / thu nhỏ hình (⌘/Ctrl + cuộn chuột, ⌘/Ctrl + / −, ⌘/Ctrl 0). Không đổi kích thước khi xuất.">
-      <button class="mini" data-z="out" aria-label="Thu nhỏ">−</button><select data-z="sel"></select><button class="mini" data-z="in" aria-label="Phóng to">+</button>
-      <button class="mini" data-z="fit">Vừa khung</button></span>
-    <span class="hint">Bấm đúp để chỉnh · kéo chú giải/chữ · F4 Plot Details · Ctrl+R rescale</span></div>
-    <div class="canvaswrap"><div class="page"><img alt="Graph"><div class="overlay ${tool === "pointer" ? "" : tool}"></div></div></div></div>`;
+  w.innerHTML = `<div class="graphwin"><div class="canvaswrap"><div class="page"><img alt="Graph"><div class="overlay ${tool === "pointer" ? "" : tool}"></div></div></div></div>`;
   const ov = $(".overlay", w);
-  $('[data-z="in"]', w).onclick = () => setZoom(g.id, gV(g.id).zoom * 1.25);
-  $('[data-z="out"]', w).onclick = () => setZoom(g.id, gV(g.id).zoom / 1.25);
-  $('[data-z="fit"]', w).onclick = () => zoomFit(g.id);
-  $('[data-z="sel"]', w).onchange = e => { const v = e.target.value; if (v === "fit") zoomFit(g.id); else setZoom(g.id, +v / 100); };
   $(".canvaswrap", w).addEventListener("wheel", e => {
     if (!(e.ctrlKey || e.metaKey)) return;           // cuộn bình thường = cuộn trang; ⌘/Ctrl + cuộn (hoặc chụm 2 ngón) = zoom hình
     e.preventDefault();
@@ -816,7 +824,13 @@ function zoomFit(id) {
   setZoom(id, V.zoom * Math.min((wrap.clientWidth - 56) / cw, (wrap.clientHeight - 56) / ch));
 }
 function updateZoomUI(id) {
-  const w = $(`.win[data-id="${id}"]`); if (!w) return; const sel = $('[data-z="sel"]', w); if (!sel) return;
+  const box = $("#tbzoom"); if (!box) return;
+  const g = activeGraph();
+  box.classList.toggle("off", !g);
+  $$("button,select", box).forEach(el => { el.disabled = !g; });
+  if (!g || (id && id !== g.id)) { if (!g) $("select", box).innerHTML = "<option>100%</option>"; return; }
+  id = g.id;
+  const sel = $("select", box);
   const pct = Math.round(gV(id).zoom * 100);
   sel.innerHTML = (ZSTEPS.includes(pct) ? "" : `<option value="${pct}" selected>${pct}%</option>`) +
     ZSTEPS.map(v => `<option value="${v}" ${v === pct ? "selected" : ""}>${v}%</option>`).join("") + '<option value="fit">Vừa khung</option>';
@@ -824,7 +838,6 @@ function updateZoomUI(id) {
 let renderBusy = false, renderQueued = null;
 function renderGraph(g) {
   const w = $(`.win[data-id="${g.id}"]`); if (!w) return;
-  $(".gkind", w).textContent = `${kindName(g.kind)} · ${g.series.length} series · dữ liệu: ${(byId(g.book) || {}).name || "?"}`;
   if (!ready) { $(".page", w).style.minWidth = "200px"; return; }
   if (renderBusy) { renderQueued = g; return; }
   renderBusy = true;
