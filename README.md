@@ -29,14 +29,6 @@ Sau lần mở đầu tiên có mạng (tải khoảng 30–40 MB), app chạy �
 | Lưu để làm tiếp | **Ctrl/⌘ S** lưu file `.sciplot.json`; File → Mở project để mở lại. Trình duyệt cũng tự lưu tạm phiên gần nhất |
 | Hoàn tác | Ctrl/⌘ Z, làm lại Ctrl/⌘ Y |
 
-## Thử trên máy trước khi đưa lên
-
-Không mở `index.html` bằng cách nhấp đúp (dạng `file://`), vì trình duyệt sẽ chặn việc nạp file Python. Thay vào đó, chạy:
-```bash
-cd docs
-python -m http.server 8000
-```
-rồi mở `http://localhost:8000`.
 
 ## Ghi chú kỹ thuật
 
