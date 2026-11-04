@@ -22,8 +22,8 @@ SAMPLES = {
     "de_results_demo.csv (volcano)": "de_results_demo.csv",
     "rnaseq_top20_demo.csv (heatmap)": "rnaseq_top20_demo.csv",
     "catalyst_kinetics_demo.csv (line)": "catalyst_kinetics_demo.csv",
-    "co_oxidation_conversion.csv (line + symbol)": "co_oxidation_conversion.csv",
-    "co_oxidation_rate.csv (bar gradient)": "co_oxidation_rate.csv",
+    "photocatalysis_demo.csv (line + symbol)": "photocatalysis_demo.csv",
+    "her_rate_demo.csv (bar gradient)": "her_rate_demo.csv",
     "xrd_demo.csv (XRD xếp chồng)": "xrd_demo.csv",
     "lsv_oer_demo.csv (LSV / Tafel)": "lsv_oer_demo.csv",
     "cv_scanrate_demo.csv (CV)": "cv_scanrate_demo.csv",
@@ -52,7 +52,7 @@ TYPES = {
 }
 AUTO_TYPE = {"xrd_demo.csv": "spectra", "lsv_oer_demo.csv": "lsv", "cv_scanrate_demo.csv": "cv",
              "cdl_demo.csv": "cdl", "eis_demo.csv": "nyquist", "bet_demo.csv": "bet", "uvvis_demo.csv": "tauc",
-             "co_oxidation_conversion.csv": "line", "co_oxidation_rate.csv": "bar",
+             "photocatalysis_demo.csv": "line", "her_rate_demo.csv": "bar",
              "iris.csv": "pca", "toothgrowth_demo.csv": "box", "de_results_demo.csv": "volcano",
              "rnaseq_top20_demo.csv": "heatmap", "catalyst_kinetics_demo.csv": "line"}
 
@@ -182,7 +182,7 @@ with left:
         opts["x"] = pick("Trục X (nhóm)", cols, guess(["dose", "treat", "group", "sample"], cols) or cols[0])
         opts["hue"] = pick("Nhóm con (fill)", cols, guess(["supp"], cols), none=True)
         stat = st.selectbox("Kiểu thống kê", ["mean", "count", "identity"],
-                            index=2 if data_name == "co_oxidation_rate.csv" else 0,
+                            index=2 if data_name == "her_rate_demo.csv" else 0,
                             format_func=lambda s: {"mean": "mean ± error (từ dữ liệu thô)",
                                                    "count": "count (đếm số dòng)",
                                                    "identity": "identity (giá trị có sẵn)"}[s])
@@ -288,7 +288,7 @@ with left:
             xb = hi.text_input("x đến", "")
             if xa and xb:
                 opts["xlim"] = (float(xa), float(xb))
-            ph = st.text_area("Ký hiệu pha (JSON)", '{"CeO2": [28.55, 33.08, 47.48, 56.33], "CuO": [35.54, 38.71]}'
+            ph = st.text_area("Ký hiệu pha (JSON)", '{"Phase I": [28.55, 33.08, 47.48, 56.33], "Phase II": [35.54, 38.71]}'
                               if data_name == "xrd_demo.csv" else "")
             if ph.strip():
                 opts["phases"] = json.loads(ph)
@@ -297,7 +297,7 @@ with left:
             ref_up = st.file_uploader("Thẻ chuẩn JCPDS (cột x, intensity, name)", type=["csv", "xlsx", "txt"], key="ref")
             if ref_up is not None:
                 opts["refs"] = _read(ref_up.name, ref_up.getvalue())
-            elif data_name == "xrd_demo.csv" and st.checkbox("Dùng thẻ chuẩn mẫu (CeO₂, CuO)", True):
+            elif data_name == "xrd_demo.csv" and st.checkbox("Dùng thẻ chuẩn mẫu (Phase I, II)", True):
                 opts["refs"] = sp.load_table(EX / "xrd_refs_demo.csv")
         if kind in ("lsv", "tafel", "cv"):
             st.markdown("**Quy đổi thế & dòng**")
@@ -355,14 +355,13 @@ with left:
         opts["psd_y"] = pick("PSD: cột dV/dlogD", num_cols, guess(["dVdlogD"], num_cols), none=True)
 
     if kind == "bar":
-        if st.checkbox("Tô gradient", data_name.startswith("co_oxidation")):
+        if st.checkbox("Tô gradient", data_name in ("her_rate_demo.csv",)):
             g1, g2 = st.columns(2)
-            opts["gradient"] = f"{g1.color_picker('Màu trên', '#F2A0A0')},{g2.color_picker('Màu dưới', '#F0D9A0')}"
+            opts["gradient"] = f"{g1.color_picker('Màu trên', '#82D0FF')},{g2.color_picker('Màu dưới', '#BC75FF')}"
             opts["edgecolor"] = "#666666"
-    opts["note"] = st.text_input("Ghi chú góc trên-trái (vd: @ At 90$^{o}$C)", "@ At 90$^{o}$C"
-                                 if data_name == "co_oxidation_rate.csv" else "") or None
+    opts["note"] = st.text_input("Ghi chú góc trên-trái (vd: @ At 90$^{o}$C)", "") or None
     if kind in ("scatter", "line", "bar", "box"):
-        rx = st.slider("Xoay nhãn trục X (độ)", 0, 90, 30 if data_name.startswith("co_oxidation_rate") else 0, 15)
+        rx = st.slider("Xoay nhãn trục X (độ)", 0, 90, 30 if data_name.startswith("her_rate") else 0, 15)
         opts["rotate_x"] = rx or None
 
     st.markdown("---")
@@ -379,7 +378,7 @@ with left:
     if colors and kind != "volcano":
         opts["colors"] = colors
     if kind not in ("volcano", "heatmap"):
-        opts["palette"] = palette if palette != "auto" else ("pastel" if data_name.startswith("co_oxidation_conv")
+        opts["palette"] = palette if palette != "auto" else ("pastel" if data_name.startswith("photocatalysis")
                                                              else ("auto" if kind in ("spectra", "lsv", "tafel", "cv",
                                                                                       "nyquist", "tauc") else "okabe"))
 

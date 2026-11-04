@@ -576,8 +576,8 @@ const COMMON = [
   { k: "colors", label: "Màu tuỳ chỉnh (vd A=red,B=#0072B2)", t: "text", show: () => kind !== "volcano" },
 ];
 const SAMPLES = [
-  ["co_oxidation_conversion.csv", "CO conversion theo nhiệt độ", "line"],
-  ["co_oxidation_rate.csv", "CO conversion rate (bar gradient)", "bar"],
+  ["photocatalysis_demo.csv", "Phân huỷ quang xúc tác (C/C₀)", "line"],
+  ["her_rate_demo.csv", "Tốc độ sinh H₂ (bar gradient)", "bar"],
   ["xrd_demo.csv", "XRD xếp chồng", "spectra"],
   ["lsv_oer_demo.csv", "LSV OER (dùng cho cả Tafel)", "lsv"],
   ["cv_scanrate_demo.csv", "CV nhiều tốc độ quét", "cv"],
@@ -589,8 +589,8 @@ const SAMPLES = [
 ];
 const SAMPLE_AUX = { "rnaseq_top20_demo.csv": { annotation_col: "sample_annotation_demo.csv", annotation_colors: '{"dex":{"trt":"orange","untrt":"black"}}' } };
 const SAMPLE_EXTRA = {  // tham số mẫu để dựng lại đúng kiểu hình
-  "co_oxidation_conversion.csv": { _palette: "pastel", xlabel: "Temperature [$^{o}$C]", ylabel: "CO conversion efficiency [%]", xlim: "30,140", ylim: "-10,110", xstep: 20, ystep: 20, legend: "upper left" },
-  "co_oxidation_rate.csv": { xlabel: " ", ylabel: "CO conversion rate [mL/min$\\cdot$g$_{cat}$]", ylim: "0,20", ystep: 5, note: "@ At 90$^{o}$C" },
+  "photocatalysis_demo.csv": { _palette: "pastel", xlabel: "Time (min)", ylabel: "C/C$_0$", xlim: "-40,130", ylim: "0,1.25", xstep: 30, legend: "upper right" },
+  "her_rate_demo.csv": { xlabel: " ", ylabel: "H$_2$ evolution (mmol h$^{-1}$ g$^{-1}$)", ylim: "0,16", ystep: 4 },
   "lsv_oer_demo.csv": { ref: "Hg/HgO", pH: 14, current_unit: "mA", area: 0.196, R: 2.5 },
   "uvvis_demo.csv": { xlim: "1.8,4.2" },
 };

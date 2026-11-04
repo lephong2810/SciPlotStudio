@@ -213,7 +213,7 @@ const KINDS = [
   { id: "volcano", name: "Volcano", group: I18("Thống kê") },
 ];
 const PALETTE_DEFS = [
-  { id: "paper", name: I18("Pastel bài báo (CuO/CZ, ACS ANM 2025)"), colors: ["#FF7FC6", "#FC9898", "#F8BF92", "#F4D897", "#82D0FF", "#8E9CFF", "#BC75FF", "#7FD3A8"] },
+  { id: "paper", name: I18("Pastel bài báo"), colors: ["#FF7FC6", "#FC9898", "#F8BF92", "#F4D897", "#82D0FF", "#8E9CFF", "#BC75FF", "#7FD3A8"] },
   { id: "npg", name: I18("NPG-style (đỏ–xanh đậm)"), colors: ["#E64B35", "#4DBBD5", "#00A087", "#3C5488", "#F39B7F", "#8491B4", "#91D1C2", "#DC0000"] },
   { id: "npg_soft", name: "NPG-style pastel", colors: ["#F0937F", "#94D6E6", "#66C6B7", "#8A98B8", "#F8C3B2", "#B5BDD2", "#BDE3DA", "#EA6666"] },
   { id: "okabe", name: I18("Okabe–Ito (an toàn mù màu)"), colors: ["#0072B2", "#D55E00", "#009E73", "#CC79A7", "#E69F00", "#56B4E9", "#F0E442", "#000000"] },
@@ -713,8 +713,8 @@ function newBookCmd() { let b; mutate(() => { b = newBook(); P.open.push(b.id); 
 
 /* ================================================================== samples */
 const SAMPLES = [
-  ["co_oxidation_conversion.csv", I18("CO conversion theo nhiệt độ"), "linesymbol", { palette: "pastel", xaxis: { label: "Temperature [$^{o}$C]", min: 30, max: 140, step: 20 }, yaxis: { label: "CO conversion efficiency [%]", min: -10, max: 110, step: 20 }, legend: { loc: [0.03, 0.97] } }],
-  ["co_oxidation_rate.csv", I18("Tốc độ CO (cột gradient)"), "column", { opts: { gradient: "#F2A0A0,#F0D9A0", value_labels: true, value_fmt: "{:.4g}", rotate_x: 30 }, yaxis: { label: "CO conversion rate [mL/min$\\cdot$g$_{cat}$]", min: 0, max: 20, step: 5 }, xaxis: { label: "" }, legend: { show: false }, texts: [{ id: "t1", text: "@ At 90$^{o}$C", x: 0.04, y: 0.95 }] }],
+  ["photocatalysis_demo.csv", I18("Phân huỷ quang xúc tác (C/C₀)"), "linesymbol", { palette: "paper", xaxis: { label: "Time (min)", min: -40, max: 130, step: 30 }, yaxis: { label: "C/C$_0$", min: 0, max: 1.25 }, legend: { loc: [0.6, 0.8] } }],
+  ["her_rate_demo.csv", I18("Tốc độ sinh H₂ (cột gradient)"), "column", { opts: { gradient: "#82D0FF,#BC75FF", value_labels: true, value_fmt: "{:.3g}", rotate_x: 30 }, yaxis: { label: "H$_2$ evolution (mmol h$^{-1}$ g$^{-1}$)", min: 0, max: 16 }, legend: { show: false } }],
   ["xrd_demo.csv", I18("XRD xếp chồng"), "spectra", {}],
   ["lsv_oer_demo.csv", "LSV OER", "lsv", { opts: { reaction: "OER", ref: "Hg/HgO", pH: 14, current_unit: "mA", area: 0.196, R: 2.5 } }],
   ["cv_scanrate_demo.csv", I18("CV nhiều tốc độ quét"), "cv", { opts: { ref: "RHE", current_unit: "mA/cm2" } }],
@@ -742,7 +742,7 @@ async function openSample(i) {
     let book;
     mutate(() => { book = newBook(file.replace(/\.csv$/, ""), cols); }, { books: [], rebuild: false });
     syncBook(book);
-    if (file === "co_oxidation_rate.csv") { book.cols[2].desig = "yEr"; syncBook(book); }
+    if (file === "her_rate_demo.csv") { book.cols[2].desig = "yEr"; syncBook(book); }
     if (file === "rnaseq_top20_demo.csv") { book.cols[0].desig = "L"; syncBook(book); }
     let target = book;
     const byL = n => (book.cols.find(c => c.lname === n) || {}).name;

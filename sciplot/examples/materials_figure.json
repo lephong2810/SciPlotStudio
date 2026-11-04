@@ -1,25 +1,106 @@
 {
-  "figsize": [13, 8.2],
+  "figsize": [
+    13,
+    8.2
+  ],
   "theme": "boxed",
   "font": "sans",
   "fontsize": 10,
   "tags": "(a)",
-  "layout": [["a", "b", "c"],
-             ["d", "e", "f"]],
+  "layout": [
+    [
+      "a",
+      "b",
+      "c"
+    ],
+    [
+      "d",
+      "e",
+      "f"
+    ]
+  ],
   "panels": {
-    "a": {"type": "xrd", "data": "xrd_demo.csv", "x": "two_theta", "y": "intensity", "sample": "sample",
-          "refs": "xrd_refs_demo.csv",
-          "phases": {"CeO2": [28.55, 33.08, 47.48, 56.33], "CuO": [35.54, 38.71]},
-          "phase_on": ["2CuO/CZ0.75", "10CuO/CZ0.75"]},
-    "b": {"type": "lsv", "data": "lsv_oer_demo.csv", "E": "E_V", "j": "I_mA", "sample": "sample",
-          "ref": "Hg/HgO", "pH": 14, "R": 2.5, "area": 0.196, "current_unit": "mA", "reaction": "OER"},
-    "c": {"type": "tafel", "data": "lsv_oer_demo.csv", "E": "E_V", "j": "I_mA", "sample": "sample",
-          "ref": "Hg/HgO", "pH": 14, "R": 2.5, "area": 0.196, "current_unit": "mA", "fit_range": [1, 10]},
-    "d": {"type": "nyquist", "data": "eis_demo.csv", "zre": "Zre_ohm", "zim": "Zim_ohm", "sample": "sample",
-          "lines": true},
-    "e": {"type": "bet", "data": "bet_demo.csv", "p": "P_P0", "v": "V_cm3g", "branch": "branch",
-          "sample": "sample", "psd_x": "pore_nm", "psd_y": "dVdlogD"},
-    "f": {"type": "tauc", "data": "uvvis_demo.csv", "wl": "wavelength_nm", "A": "absorbance",
-          "sample": "sample", "xlim": [1.8, 4.2]}
+    "a": {
+      "type": "xrd",
+      "data": "xrd_demo.csv",
+      "x": "two_theta",
+      "y": "intensity",
+      "sample": "sample",
+      "refs": "xrd_refs_demo.csv",
+      "phases": {
+        "Phase I": [
+          28.55,
+          33.08,
+          47.48,
+          56.33
+        ],
+        "Phase II": [
+          35.54,
+          38.71
+        ]
+      },
+      "phase_on": [
+        "Sample B",
+        "Sample C"
+      ]
+    },
+    "b": {
+      "type": "lsv",
+      "data": "lsv_oer_demo.csv",
+      "E": "E_V",
+      "j": "I_mA",
+      "sample": "sample",
+      "ref": "Hg/HgO",
+      "pH": 14,
+      "R": 2.5,
+      "area": 0.196,
+      "current_unit": "mA",
+      "reaction": "OER"
+    },
+    "c": {
+      "type": "tafel",
+      "data": "lsv_oer_demo.csv",
+      "E": "E_V",
+      "j": "I_mA",
+      "sample": "sample",
+      "ref": "Hg/HgO",
+      "pH": 14,
+      "R": 2.5,
+      "area": 0.196,
+      "current_unit": "mA",
+      "fit_range": [
+        1,
+        10
+      ]
+    },
+    "d": {
+      "type": "nyquist",
+      "data": "eis_demo.csv",
+      "zre": "Zre_ohm",
+      "zim": "Zim_ohm",
+      "sample": "sample",
+      "lines": true
+    },
+    "e": {
+      "type": "bet",
+      "data": "bet_demo.csv",
+      "p": "P_P0",
+      "v": "V_cm3g",
+      "branch": "branch",
+      "sample": "sample",
+      "psd_x": "pore_nm",
+      "psd_y": "dVdlogD"
+    },
+    "f": {
+      "type": "tauc",
+      "data": "uvvis_demo.csv",
+      "wl": "wavelength_nm",
+      "A": "absorbance",
+      "sample": "sample",
+      "xlim": [
+        1.8,
+        4.2
+      ]
+    }
   }
 }

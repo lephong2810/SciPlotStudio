@@ -79,11 +79,11 @@ Một số tuỳ chọn tạo đúng kiểu hình trong bài báo:
 - `markers=o`;
 - panel gắn nhãn `(a) (b) (c)`.
 
-Ví dụ dựng lại hình CO oxidation: `python sciplot.py panel examples/co_oxidation_figure.json -o fig.pdf`. Ví dụ figure vật liệu 6 ô (XRD, LSV, Tafel, EIS, BET, Tauc): `examples/materials_figure.json`.
+Ví dụ figure 2 ô (đường + cột gradient): `python sciplot.py panel examples/photocatalysis_figure.json -o fig.pdf`. Ví dụ figure vật liệu 6 ô (XRD, LSV, Tafel, EIS, BET, Tauc): `examples/materials_figure.json`.
 
 ```bash
 python sciplot.py xrd examples/xrd_demo.csv --x two_theta --y intensity --sample sample \
-       --refs examples/xrd_refs_demo.csv --phases '{"CeO2":[28.55,33.08,47.48],"CuO":[35.54,38.71]}' -o xrd.png
+       --refs examples/xrd_refs_demo.csv --phases '{"Phase I":[28.55,33.08,47.48],"Phase II":[35.54,38.71]}' -o xrd.png
 python sciplot.py lsv examples/lsv_oer_demo.csv --E E_V --j I_mA --sample sample \
        --ref Hg/HgO --pH 14 --R 2.5 --area 0.196 --current_unit mA --reaction OER -o lsv.png
 python sciplot.py tafel examples/lsv_oer_demo.csv --E E_V --j I_mA --sample sample \
@@ -157,8 +157,8 @@ Trong `layout`, cùng một chữ lặp lại sẽ gộp ô (như `E` ở trên)
 
 ## Lưu ý
 
-- `examples/iris.csv` là dữ liệu iris thật. Các file có đuôi `_demo` là **dữ liệu mô phỏng** để thử công cụ: `toothgrowth_demo` mô phỏng theo mean/SD trong giáo trình; các file còn lại (DE, RNA-seq, XRD, LSV, CV, Cdl, EIS, BET, UV-Vis, động học) là số liệu giả. Hai file `co_oxidation_*.csv` là số liệu đọc xấp xỉ bằng mắt từ hình mẫu, chỉ dùng để minh hoạ kiểu hình.
-- Vị trí các đỉnh trong `xrd_refs_demo.csv` (CeO₂ 34-0394, CuO 45-0937) chỉ là giá trị gần đúng để minh hoạ. Khi dùng thật, nhập thẻ chuẩn chính thức (cột `x`, `intensity`, `name`).
+- `examples/iris.csv` là dữ liệu iris thật. Các file có đuôi `_demo` là **dữ liệu mô phỏng** để thử công cụ: `toothgrowth_demo` mô phỏng theo mean/SD trong giáo trình; các file còn lại (DE, RNA-seq, XRD, LSV, CV, Cdl, EIS, BET, UV-Vis, động học) là số liệu giả. `photocatalysis_demo` và `her_rate_demo` cũng là số liệu giả.
+- Các thẻ chuẩn trong `xrd_refs_demo.csv` (Phase I, Phase II) là vạch mô phỏng để minh hoạ. Khi dùng thật, nhập thẻ chuẩn chính thức (cột `x`, `intensity`, `name`).
 - Elip PCA được tính theo hiệp phương sai với hệ số F. `stat_ellipse` của R mặc định dùng phân phối t đa biến, nên kích thước elip có thể chênh nhẹ.
 - Dấu của các PC có thể ngược so với `prcomp`. Đây chỉ là quy ước, không ảnh hưởng ý nghĩa.
 

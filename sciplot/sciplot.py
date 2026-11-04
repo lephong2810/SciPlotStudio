@@ -59,7 +59,7 @@ PALETTES = {
     "gray": ["#222222", "#777777", "#AAAAAA", "#555555", "#CCCCCC", "#333333"],
     "pastel": ["#F06EAA", "#F08A8A", "#F5B98A", "#F2E3A0", "#8FD3F2", "#8F8FEA", "#B86FE6", "#7FD3A8"],
     "bold": ["#000000", "#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00", "#A65628", "#F781BF"],
-    # pastel lấy từ Figure 1 bài Le et al., ACS Appl. Nano Mater. 2025 (CuO/CeO2–ZrO2)
+    # pastel hồng–cam–vàng–xanh, hợp hình bài báo
     "paper": ["#FF7FC6", "#FC9898", "#F8BF92", "#F4D897", "#82D0FF", "#8E9CFF", "#BC75FF", "#7FD3A8"],
     "npg_soft": ["#F0937F", "#94D6E6", "#66C6B7", "#8A98B8", "#F8C3B2", "#B5BDD2", "#BDE3DA", "#EA6666"],
     "tol_light": ["#77AADD", "#EE8866", "#EEDD88", "#FFAABB", "#99DDFF", "#44BB99", "#BBCC33", "#AAAA00"],

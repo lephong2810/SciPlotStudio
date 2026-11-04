@@ -1,0 +1,61 @@
+{
+  "figsize": [
+    11,
+    4.8
+  ],
+  "theme": "boxed",
+  "font": "sans",
+  "fontsize": 12,
+  "tags": "(a)",
+  "layout": [
+    [
+      "a",
+      "b"
+    ]
+  ],
+  "panels": {
+    "a": {
+      "type": "line",
+      "data": "photocatalysis_demo.csv",
+      "x": "time_min",
+      "y": "C_C0",
+      "color": "sample",
+      "palette": "pastel",
+      "markers": "o",
+      "ms": 5,
+      "xlabel": "Time (min)",
+      "ylabel": "C/C$_0$",
+      "xlim": [
+        -40,
+        130
+      ],
+      "ylim": [
+        0,
+        1.25
+      ],
+      "xstep": 30,
+      "legend": "upper right"
+    },
+    "b": {
+      "type": "bar",
+      "data": "her_rate_demo.csv",
+      "x": "sample",
+      "y": "rate",
+      "stat": "identity",
+      "err_col": "sd",
+      "gradient": "#82D0FF,#BC75FF",
+      "edgecolor": "#666666",
+      "width": 0.75,
+      "value_labels": true,
+      "value_fmt": "{:.3g}",
+      "rotate_x": 30,
+      "xlabel": "",
+      "ylabel": "H$_2$ evolution (mmol h$^{-1}$ g$^{-1}$)",
+      "ylim": [
+        0,
+        16
+      ],
+      "ystep": 4
+    }
+  }
+}
