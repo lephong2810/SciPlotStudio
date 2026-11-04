@@ -164,9 +164,15 @@ def _series_data(G, s):
 
 
 def _palette(G, n):
-    pal = G.get("palette") or "okabe"
+    pal = G.get("palette") or "paper"
     if pal in sp.PALETTES:
         base = sp.PALETTES[pal]
+        if pal in getattr(sp, "SEQUENTIAL", ()):  # bảng màu tăng dần: trải đều theo số series
+            if n <= 1:
+                return [base[len(base) // 2]]
+            from matplotlib.colors import LinearSegmentedColormap
+            cm = LinearSegmentedColormap.from_list("seq", base)
+            return [matplotlib.colors.to_hex(cm(i / (n - 1))) for i in range(n)]
         return [base[i % len(base)] for i in range(n)]
     cmap = plt.get_cmap(pal if pal in plt.colormaps() else "viridis")
     return [matplotlib.colors.to_hex(cmap(i / max(1, n - 1) * 0.9)) for i in range(n)]
@@ -189,7 +195,42 @@ def _plot_xy(G, ax, items, styles):
     if kind == "column":
         return _plot_columns(G, ax, items, styles)
     nfit = 0
+    npeak = 0
+    pal = _palette(G, max(len(items), 1))
+    bg_col = None
+    if kind == "xps":
+        for s_, d_ in zip(G["series"], items):
+            if (s_.get("role") or _xps_role(d_["my"])) == "bg":
+                bg_col = s_["y"]
+                break
+        npk = sum(1 for s_, d_ in zip(G["series"], items) if (s_.get("role") or _xps_role(d_["my"])) == "peak")
+        pal = _palette(G, max(npk, 1))
     for d, st, s in zip(items, styles, G["series"]):
+        role = None
+        if kind == "xps":
+            role = s.get("role") or _xps_role(d["my"])
+            st = dict(st)
+            user = lambda k: s.get(k) not in (None, "", "default")
+            if role == "raw":
+                if not user("marker"): st["marker"] = "o"
+                if not user("fill"): st["fill"] = "hollow"
+                if not user("ls"): st["ls"] = "None"
+                if not user("ms"): st["ms"] = 3.5
+                if not user("color"): st["color"] = "#3A3A3A"
+            elif role == "bg":
+                if not user("color"): st["color"] = "#8C8C8C"
+                if not user("ls"): st["ls"] = "--"
+                if not user("lw"): st["lw"] = 1.0
+                if not user("marker"): st["marker"] = None
+            elif role == "env":
+                if not user("color"): st["color"] = "#D7263D"
+                if not user("lw"): st["lw"] = 1.5
+                if not user("marker"): st["marker"] = None
+            else:
+                if not user("color"): st["color"] = pal[npeak % len(pal)]
+                if not user("lw"): st["lw"] = 1.1
+                if not user("marker"): st["marker"] = None
+                npeak += 1
         target = ax
         if s.get("y2"):
             if ax2 is None:
@@ -205,9 +246,25 @@ def _plot_xy(G, ax, items, styles):
         kw = dict(color=st["color"], lw=st["lw"], ls=ls, marker=marker, ms=st["ms"], label=d["label"],
                   mfc=(st["color"] if st["fill"] == "solid" else "white" if st["fill"] == "hollow" else "none"),
                   mec=st["color"], mew=max(0.8, st["lw"] * 0.7), zorder=3, alpha=st["alpha"])
+        fmode = s.get("fill_mode")
+        if role == "peak" and not fmode:
+            fmode = (G.get("opts") or {}).get("peak_fill", "gradient")
+        if kind == "area" and not fmode:
+            fmode = "solid"
         if kind == "area":
-            target.fill_between(x[m], d["y"][m], color=st["color"], alpha=0.35 * st["alpha"], lw=0, zorder=2)
             kw.update(marker=None)
+        if fmode and fmode != "none":
+            fto = s.get("fill_to") or (bg_col if role == "peak" else None)
+            base = np.zeros(m.sum())
+            if fto:
+                bcol, _ = _col(s.get("book") or G.get("book"), fto)
+                bv = pd.to_numeric(bcol, errors="coerce").to_numpy(float)
+                bv = np.resize(bv, len(m)) if len(bv) != len(m) else bv
+                base = np.nan_to_num(bv[m])
+            fc = s.get("fill_color") or st["color"]
+            dalpha = (G.get("opts") or {}).get("fill_alpha")
+            falpha = float(s.get("fill_alpha") or dalpha or (0.55 if fmode == "gradient" else 0.35))
+            _area_fill(target, x[m], d["y"][m], base, fc, fmode, falpha, s.get("hatch") or (G.get("opts") or {}).get("hatch") or "///")
         if d["err"] is not None:
             e = d["err"]
             h = target.errorbar(x[m], d["y"][m], yerr=np.abs(e[m]), capsize=st["capsize"], elinewidth=st["lw"] * 0.7,
@@ -220,6 +277,43 @@ def _plot_xy(G, ax, items, styles):
             _fit_series(ax, target, x[m], d["y"][m], s, st, d["label"], nfit)
             nfit += 1
     return ax2, handles
+
+
+XPS_ROLES = {
+    "raw": ("raw", "exp", "data", "measured", "counts", "cps", "intensity", "original"),
+    "bg": ("bg", "background", "shirley", "tougaard", "baseline", "linear bg"),
+    "env": ("envelope", "env", "sum", "fit", "total", "cumulative", "model"),
+}
+
+
+def _xps_role(meta):
+    """Đoán vai trò cột XPS theo tên: Raw / Background / Envelope / peak thành phần."""
+    nm = (_disp(meta) + " " + (meta.get("comment") or "")).lower()
+    for role in ("bg", "env", "raw"):
+        if any(k in nm for k in XPS_ROLES[role]):
+            if role == "env" and "peak" in nm:
+                continue
+            return role
+    return "peak"
+
+
+def _area_fill(ax, x, y, base, color, mode, alpha, hatch="///"):
+    """Tô vùng giữa đường và đường nền. mode: solid | gradient | hatch | none"""
+    from matplotlib.colors import to_rgba
+    if len(x) < 2:
+        return
+    if mode == "solid":
+        ax.fill_between(x, base, y, color=color, alpha=alpha, lw=0, zorder=2)
+    elif mode == "gradient":
+        # đậm ở đỉnh, nhạt dần về đường nền (xếp lớp — không có đường nối giữa các dải, vẫn là vector)
+        n = 24
+        ai = 1 - (1 - min(alpha, 0.98)) ** (1 / n)
+        for k in range(n):
+            ax.fill_between(x, base + (y - base) * k / n, y, color=color, alpha=ai, lw=0, zorder=2)
+    elif mode == "hatch":
+        with plt.rc_context({"hatch.linewidth": 0.7}):
+            ax.fill_between(x, base, y, facecolor=to_rgba(color, alpha * 0.35), edgecolor=color, hatch=hatch,
+                            lw=0, zorder=2)
 
 
 def _num(v):
@@ -582,17 +676,21 @@ def _draw(G, ax):
     items = [_series_data(G, s) for s in series]
     styles = [_style(G, i, s) for i, s in enumerate(series)]
     ax2 = handles = None
-    generic = kind in ("line", "scatter", "linesymbol", "area", "column")
+    generic = kind in ("line", "scatter", "linesymbol", "area", "column", "xps")
     if not items:
         ax.text(0.5, 0.5, "Chưa có dữ liệu — chọn cột Y trong worksheet", ha="center", va="center",
                 transform=ax.transAxes, color="#888")
-    elif kind in ("line", "scatter", "linesymbol", "area", "column"):
+    elif kind in ("line", "scatter", "linesymbol", "area", "column", "xps"):
         ax2, handles = _plot_xy(G, ax, items, styles)
     else:
         _plot_sciplot(G, ax, items, styles)
     # nhãn trục tự động lấy từ Long Name (Units) giống Origin
     dx = _axis_label(items[0]["mx"]) if (generic and items) else None
     dy = _default_ylabel(items, series) if (generic and items) else None
+    if kind == "xps":
+        dx = "Binding energy (eV)"
+        dy = "Intensity (a.u.)"
+        G = {**G, "xaxis": {"reverse": True, **(G.get("xaxis") or {})}}
     if kind in ("box",):
         dx = ""
         dy = _default_ylabel(items, series) if len(items) == 1 else "Value"
@@ -606,6 +704,9 @@ def _draw(G, ax):
             _apply_axis(ax2, "y", G.get("y2axis"), _axis_label(right[0]["my"]) if right else None)
             ax2.yaxis.set_label_position("right")
         _frame(ax, G)
+        if kind == "xps" and (G.get("opts") or {}).get("hide_y", True):
+            ax.set_yticks([])
+            ax.yaxis.set_minor_locator(NullLocator())
         if G.get("title"):
             ax.set_title(G["title"])
     leg = _apply_legend(ax, G, handles if generic else None, ax2) if kind != "heatmap" else None

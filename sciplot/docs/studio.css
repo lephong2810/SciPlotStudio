@@ -159,3 +159,17 @@ table.sheet td.num{text-align:right}
 #tbzoom select{height:26px;border:1px solid var(--line);border-radius:5px;background:#fff;font-size:12.5px;padding:0 4px;margin:0 1px;min-width:74px}
 #tbzoom.off{opacity:.4}
 #tbzoom .tb{padding:3px 4px}
+
+.swrow{display:flex;gap:3px;flex-wrap:wrap;align-items:center;margin-top:5px}
+.swlab{font-size:11px;color:var(--muted);min-width:78px}
+.swb{width:18px;height:18px;border-radius:4px;border:1px solid rgba(0,0,0,.18);cursor:pointer;padding:0}
+.swb:hover,.grb:hover{transform:scale(1.15)}
+.swb.on,.grb.on{outline:2px solid var(--accent);outline-offset:1px}
+.grb{width:30px;height:20px;border-radius:4px;border:1px solid rgba(0,0,0,.18);cursor:pointer;padding:0}
+.pallist{display:grid;gap:2px;max-height:280px;overflow:auto;border:1px solid var(--line);border-radius:6px;padding:4px}
+.palrow{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;padding:4px 6px;border-radius:5px;cursor:pointer}
+.palrow:hover{background:#f3f6fb}.palrow.on{background:var(--sel)}
+.palname{font-size:12.5px}
+.strip{display:flex;border-radius:3px;overflow:hidden}
+.strip i{width:15px;height:14px;display:block}
+.strip.big i{flex:1;height:12px}

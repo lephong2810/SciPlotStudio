@@ -59,7 +59,18 @@ PALETTES = {
     "gray": ["#222222", "#777777", "#AAAAAA", "#555555", "#CCCCCC", "#333333"],
     "pastel": ["#F06EAA", "#F08A8A", "#F5B98A", "#F2E3A0", "#8FD3F2", "#8F8FEA", "#B86FE6", "#7FD3A8"],
     "bold": ["#000000", "#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00", "#A65628", "#F781BF"],
+    # pastel lấy từ Figure 1 bài Le et al., ACS Appl. Nano Mater. 2025 (CuO/CeO2–ZrO2)
+    "paper": ["#FF7FC6", "#FC9898", "#F8BF92", "#F4D897", "#82D0FF", "#8E9CFF", "#BC75FF", "#7FD3A8"],
+    "npg_soft": ["#F0937F", "#94D6E6", "#66C6B7", "#8A98B8", "#F8C3B2", "#B5BDD2", "#BDE3DA", "#EA6666"],
+    "tol_light": ["#77AADD", "#EE8866", "#EEDD88", "#FFAABB", "#99DDFF", "#44BB99", "#BBCC33", "#AAAA00"],
+    "tol_muted": ["#CC6677", "#332288", "#DDCC77", "#117733", "#88CCEE", "#882255", "#44AA99", "#999933"],
+    "seq_warm": ["#FFD8A8", "#FDB48C", "#F9917E", "#EE6F7B", "#D6527F", "#A83C82"],
+    "seq_blue": ["#C6DBEF", "#9ECAE1", "#6BAED6", "#4292C6", "#2171B5", "#08519C"],
+    "seq_green": ["#C7E9C0", "#A1D99B", "#74C476", "#41AB5D", "#238B45", "#005A32"],
+    "seq_purple": ["#DADAEB", "#BCBDDC", "#9E9AC8", "#807DBA", "#6A51A3", "#4A1486"],
+    "viridis": ["#440154", "#443983", "#31688E", "#21918C", "#35B779", "#90D743", "#FDE725"],
 }
+SEQUENTIAL = {"seq_warm", "seq_blue", "seq_green", "seq_purple", "viridis"}
 MARKERS = ["o", "^", "s", "D", "v", "P", "X", "*", "<", ">"]
 FONTS = {
     "sans": ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"],

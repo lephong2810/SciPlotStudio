@@ -124,6 +124,7 @@ function parseCell(v, dec = ".") {
   return s;
 }
 function colIsNumeric(c) { const f = c.data.filter(v => v !== null && v !== ""); return f.length > 0 && f.filter(v => typeof v === "number").length >= 0.8 * f.length; }
+const plainMath = t => String(t).replace(/\$([^$]*)\$/g, (m, g) => g.replace(/\\([a-zA-Z]+)/g, "$1").replace(/[_^{}]/g, ""));
 function dispName(c) { return (c.lname || "").trim() || c.name; }
 
 /* ---- đọc file / văn bản thành bảng (giữ logic đã kiểm thử ở bản web đơn giản) ---- */
@@ -199,6 +200,7 @@ const KINDS = [
   { id: "line", name: "Line", group: "2D" }, { id: "scatter", name: "Scatter", group: "2D" },
   { id: "linesymbol", name: "Line + Symbol", group: "2D" }, { id: "column", name: "Column / Bar", group: "2D" },
   { id: "area", name: "Area", group: "2D" },
+  { id: "xps", name: "XPS (peak fitting, tô peak)", group: "Vật liệu" },
   { id: "spectra", name: "Phổ xếp chồng (XRD, Raman, FTIR, XPS)", group: "Vật liệu" },
   { id: "lsv", name: "LSV (η@j)", group: "Điện hoá" }, { id: "tafel", name: "Tafel", group: "Điện hoá" },
   { id: "cv", name: "CV", group: "Điện hoá" }, { id: "cdl", name: "Cdl", group: "Điện hoá" },
@@ -208,20 +210,47 @@ const KINDS = [
   { id: "pca", name: "PCA", group: "Thống kê" }, { id: "heatmap", name: "Heatmap", group: "Thống kê" },
   { id: "volcano", name: "Volcano", group: "Thống kê" },
 ];
+const PALETTE_DEFS = [
+  { id: "paper", name: "Pastel bài báo (CuO/CZ, ACS ANM 2025)", colors: ["#FF7FC6", "#FC9898", "#F8BF92", "#F4D897", "#82D0FF", "#8E9CFF", "#BC75FF", "#7FD3A8"] },
+  { id: "npg", name: "Nature (NPG)", colors: ["#E64B35", "#4DBBD5", "#00A087", "#3C5488", "#F39B7F", "#8491B4", "#91D1C2", "#DC0000"] },
+  { id: "npg_soft", name: "Nature pastel", colors: ["#F0937F", "#94D6E6", "#66C6B7", "#8A98B8", "#F8C3B2", "#B5BDD2", "#BDE3DA", "#EA6666"] },
+  { id: "okabe", name: "Okabe–Ito (an toàn mù màu, Nature Methods)", colors: ["#0072B2", "#D55E00", "#009E73", "#CC79A7", "#E69F00", "#56B4E9", "#F0E442", "#000000"] },
+  { id: "tol_light", name: "Paul Tol light (pastel, an toàn mù màu)", colors: ["#77AADD", "#EE8866", "#EEDD88", "#FFAABB", "#99DDFF", "#44BB99", "#BBCC33", "#AAAA00"] },
+  { id: "tol_muted", name: "Paul Tol muted (trầm, an toàn mù màu)", colors: ["#CC6677", "#332288", "#DDCC77", "#117733", "#88CCEE", "#882255", "#44AA99", "#999933"] },
+  { id: "aaas", name: "Science (AAAS)", colors: ["#3B4992", "#EE0000", "#008B45", "#631879", "#008280", "#BB0021", "#5F559B", "#A20056"] },
+  { id: "seq_warm", name: "Tăng dần hồng → tím (theo hàm lượng)", seq: true, colors: ["#FFD8A8", "#FDB48C", "#F9917E", "#EE6F7B", "#D6527F", "#A83C82"] },
+  { id: "seq_blue", name: "Tăng dần xanh dương", seq: true, colors: ["#C6DBEF", "#9ECAE1", "#6BAED6", "#4292C6", "#2171B5", "#08519C"] },
+  { id: "seq_green", name: "Tăng dần xanh lá", seq: true, colors: ["#C7E9C0", "#A1D99B", "#74C476", "#41AB5D", "#238B45", "#005A32"] },
+  { id: "seq_purple", name: "Tăng dần tím", seq: true, colors: ["#DADAEB", "#BCBDDC", "#9E9AC8", "#807DBA", "#6A51A3", "#4A1486"] },
+  { id: "viridis", name: "Viridis (tăng dần, in đen trắng vẫn rõ)", seq: true, colors: ["#440154", "#443983", "#31688E", "#21918C", "#35B779", "#90D743", "#FDE725"] },
+  { id: "bold", name: "Đậm cổ điển", colors: ["#000000", "#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00", "#A65628", "#F781BF"] },
+  { id: "gray", name: "Xám (in đen trắng)", colors: ["#222222", "#777777", "#AAAAAA", "#555555", "#CCCCCC", "#333333"] },
+];
+const PAL = Object.fromEntries(PALETTE_DEFS.map(p => [p.id, p]));
+const NEUTRAL = ["#000000", "#3A3A3A", "#666666", "#8C8C8C", "#BFBFBF", "#FFFFFF"];
+function hexMix(a, b, t) { const pa = a.match(/\w\w/g).map(h => parseInt(h, 16)), pb = b.match(/\w\w/g).map(h => parseInt(h, 16)); return "#" + pa.map((v, i) => Math.round(v + (pb[i] - v) * t).toString(16).padStart(2, "0")).join("").toUpperCase(); }
+function palColors(id, n) {
+  const P_ = PAL[id] || PAL.paper; const c = P_.colors; n = Math.max(1, n || c.length);
+  if (!P_.seq) return Array.from({ length: n }, (_, i) => c[i % c.length]);
+  if (n === 1) return [c[Math.floor(c.length / 2)]];
+  return Array.from({ length: n }, (_, i) => { const f = i / (n - 1) * (c.length - 1), k = Math.min(c.length - 2, Math.floor(f)); return hexMix(c[k], c[k + 1], f - k); });
+}
+const GRADIENTS = [["Hồng → vàng (bài báo)", "#FC9D99,#F3D597"], ["Hồng → trắng", "#F48FB1,#FFF0F5"], ["Đào → kem", "#F7A072,#FBE8C8"], ["Xanh → trắng", "#6BAED6,#EAF4FB"],
+  ["Xanh ngọc → trắng", "#66C6B7,#E8F6F3"], ["Tím → hồng", "#9E8CF0,#F6C6E0"], ["Xanh → tím", "#82D0FF,#BC75FF"], ["Xanh lá → vàng", "#7FD3A8,#F5EFA8"], ["Xám", "#8C8C8C,#EDEDED"]];
 const kindName = k => (KINDS.find(x => x.id === k) || { name: k }).name;
 const TABLE_KINDS = new Set(["box", "histogram", "pca", "heatmap"]);
 const DEFAULT_OPTS = {
-  spectra: { kind: "xrd" }, lsv: { reaction: "OER", ref: "RHE", current_unit: "mA/cm2" },
+  xps: { peak_fill: "gradient" }, spectra: { kind: "xrd" }, lsv: { reaction: "OER", ref: "RHE", current_unit: "mA/cm2" },
   tafel: { reaction: "OER", ref: "RHE", current_unit: "mA/cm2", fit_range: [1, 10] }, cv: { ref: "RHE", current_unit: "mA/cm2" },
   heatmap: { scale: "row" }, nyquist: { lines: true }, cdl: { half: false }, tauc: { transition: "direct" },
 };
-const DEFAULT_SIZE = { spectra: [4.5, 5], heatmap: [6.5, 5.5], nyquist: [4.6, 4.4] };
+const DEFAULT_SIZE = { spectra: [4.5, 5], heatmap: [6.5, 5.5], nyquist: [4.6, 4.4], xps: [4.6, 3.8] };
 function newGraph(kind, book, series, extra = {}) {
   const id = "g" + (++P.seq.graph);
   const g = {
     id, name: uniqueName(`Graph${P.seq.graph}`, P.graphs), kind, book: book.id, series,
     opts: clone(DEFAULT_OPTS[kind] || {}), size: clone(DEFAULT_SIZE[kind] || [5, 4]),
-    theme: "origin", font: "sans", fontsize: 11, palette: "okabe",
+    theme: "origin", font: "sans", fontsize: 11, palette: "paper",
     xaxis: {}, yaxis: {}, y2axis: {}, legend: {}, title: "", texts: [], reflines: [], frame: {}, ...extra,
   };
   P.graphs.push(g);
@@ -685,6 +714,7 @@ const SAMPLES = [
   ["cv_scanrate_demo.csv", "CV nhiều tốc độ quét", "cv", { opts: { ref: "RHE", current_unit: "mA/cm2" } }],
   ["eis_demo.csv", "EIS Nyquist", "nyquist", {}],
   ["bet_demo.csv", "BET isotherm", "bet", {}, ["P_P0", "V_cm3g", "sample"]],
+  ["xps_o1s_demo.csv", "XPS O 1s (tô peak)", "xps", { texts: [{ id: "t1", text: "O 1s", x: 0.80, y: 0.62, fontsize: 13, bold: true }] }],
   ["uvvis_demo.csv", "UV-Vis → Tauc", "tauc", { opts: { transition: "direct", xlim: "1.8,4.2" } }],
   ["iris.csv", "Iris (PCA)", "pca", {}],
   ["rnaseq_top20_demo.csv", "RNA-seq heatmap", "heatmap", {}],
@@ -978,7 +1008,7 @@ function graphContext(id, e) {
   ];
   if (h && h.kind === "text" && String(h.id).startsWith("fit:")) { const i = +h.id.slice(4); items.unshift(["Tuỳ chỉnh fit…", () => plotDetails(g, i)], ["Ẩn phương trình", () => mutate(() => { g.series[i].fit_eq = false; })], ["Xoá đường fit", () => mutate(() => { clearFit(g.series[i]); })], "-"); }
   else if (h && h.kind === "text") items.unshift(["Sửa chữ…", () => textDialog(g, h.id)], ["Xoá chữ này", () => mutate(() => { g.texts = g.texts.filter(t => t.id !== h.id); })], "-");
-  if (["line", "scatter", "linesymbol", "area"].includes(g.kind)) items.splice(items.length - 4, 0, ["Fit tuyến tính / đa thức…", () => fitDialog(g)]);
+  if (["line", "scatter", "linesymbol", "area", "xps"].includes(g.kind)) items.splice(items.length - 4, 0, ["Fit tuyến tính / đa thức…", () => fitDialog(g)]);
   openPopup($("#ctxmenu"), items, e.clientX, e.clientY);
 }
 function rescale() {
@@ -1032,6 +1062,20 @@ function dialog({ title, fields, values, tabs, onOk, onApply, onChange, onOpen, 
     $$(".mtabs button", mb).forEach(b => b.onclick = () => { read(); tabIdx = +b.dataset.t; draw(); });
     const T = tabList[tabIdx];
     if (T.bind) T.bind(mb, vals, draw);
+    $$("[data-sw]", mb).forEach(b => b.onclick = () => {
+      const k = b.dataset.sw, inp = $(`input[type=color][data-k="${k}"]`, mb); if (!inp) return;
+      inp.value = b.dataset.c; const au = $(`[data-auto="${k}"]`, mb); if (au) au.checked = false;
+      $$(`[data-sw="${k}"]`, mb).forEach(x => x.classList.toggle("on", x === b));
+      inp.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    $$("[data-gp]", mb).forEach(b => b.onclick = () => {
+      const k = b.dataset.gp, [c1, c2] = b.dataset.g.split(",");
+      const on = $(`[data-gon="${k}"]`, mb); if (on) on.checked = true;
+      $(`[data-g1="${k}"]`, mb).value = c1; $(`[data-g2="${k}"]`, mb).value = c2;
+      $$(`[data-gp="${k}"]`, mb).forEach(x => x.classList.toggle("on", x === b));
+      on.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    $$("[data-pal]", mb).forEach(r => r.addEventListener("change", () => $$(".palrow", mb).forEach(l => l.classList.toggle("on", l.contains(r) && r.checked))));
     $$("input,select,textarea", mb).forEach(el => el.addEventListener("change", () => { read(); if (onChange) onChange(mb, vals); if (T.fields && T.fields.some(f => f.show)) { draw(); } }));
     if (onOpen && tabIdx === 0) onOpen(mb, vals);
   };
@@ -1066,10 +1110,17 @@ function fieldHTML(f, v) {
     case "bool": return `<label for="${id}">${esc(f.label)}</label><div><input type="checkbox" id="${id}" data-k="${f.k}" ${val ? "checked" : ""}></div>${f.help ? `<div class="help">${esc(f.help)}</div>` : ""}`;
     case "sel": input = `<select id="${id}" data-k="${f.k}">${f.opts.map(([a, b]) => `<option value="${esc(a)}" ${String(a) === String(val ?? "") ? "selected" : ""}>${esc(b)}</option>`).join("")}</select>`; break;
     case "number": input = `<input type="number" id="${id}" data-k="${f.k}" value="${val ?? ""}" step="${f.step || "any"}" placeholder="${esc(f.ph || "tự động")}">`; break;
-    case "color": input = `<div class="pair"><input type="color" id="${id}" data-k="${f.k}" value="${val || f.def || "#000000"}" style="flex:none;width:46px;height:28px;padding:1px">${f.auto ? `<label style="display:flex;gap:4px;align-items:center"><input type="checkbox" data-auto="${f.k}" ${val ? "" : "checked"}> tự động</label>` : ""}</div>`; break;
+    case "color": {
+      const rows = typeof f.swatches === "function" ? f.swatches() : f.swatches || [{ name: "Bài báo", colors: PAL.paper.colors }, { name: "Nature", colors: PAL.npg.colors }, { name: "Trung tính", colors: NEUTRAL }];
+      input = `<div class="pair"><input type="color" id="${id}" data-k="${f.k}" value="${val || f.def || "#000000"}" style="flex:none;width:46px;height:28px;padding:1px">${f.auto ? `<label style="display:flex;gap:4px;align-items:center"><input type="checkbox" data-auto="${f.k}" ${val ? "" : "checked"}> tự động</label>` : ""}</div>` +
+        rows.map(r => `<div class="swrow"><span class="swlab">${esc(r.name)}</span>${r.colors.map(c => `<button type="button" class="swb${String(val).toUpperCase() === c.toUpperCase() ? " on" : ""}" data-sw="${f.k}" data-c="${c}" title="${c}" style="background:${c}"></button>`).join("")}</div>`).join("");
+      break;
+    }
+    case "palette": input = `<div class="pallist">${PALETTE_DEFS.map(p => `<label class="palrow${val === p.id ? " on" : ""}"><input type="radio" name="pal_${f.k}" data-pal="${f.k}" value="${p.id}" ${val === p.id ? "checked" : ""}><span class="palname">${esc(p.name)}</span><span class="strip">${p.colors.map(c => `<i style="background:${c}"></i>`).join("")}</span></label>`).join("")}</div>`; break;
     case "textarea": input = `<textarea id="${id}" data-k="${f.k}">${esc(val ?? "")}</textarea>`; break;
     case "pair": input = `<div class="pair"><input type="number" step="any" data-k="${f.k}" data-i="0" value="${val && val[0] != null ? val[0] : ""}"><input type="number" step="any" data-k="${f.k}" data-i="1" value="${val && val[1] != null ? val[1] : ""}"></div>`; break;
-    case "gradient": input = `<div class="pair"><label style="display:flex;gap:4px;align-items:center"><input type="checkbox" data-gon="${f.k}" ${val ? "checked" : ""}> bật</label><input type="color" data-g1="${f.k}" value="${(val || "#F2A0A0,#F0D9A0").split(",")[0]}" style="flex:none;width:46px;height:28px;padding:1px"><input type="color" data-g2="${f.k}" value="${(val || "#F2A0A0,#F0D9A0").split(",")[1]}" style="flex:none;width:46px;height:28px;padding:1px"></div>`; break;
+    case "gradient": input = `<div class="pair"><label style="display:flex;gap:4px;align-items:center"><input type="checkbox" data-gon="${f.k}" ${val ? "checked" : ""}> bật</label><input type="color" data-g1="${f.k}" value="${(val || "#F2A0A0,#F0D9A0").split(",")[0]}" style="flex:none;width:46px;height:28px;padding:1px"><input type="color" data-g2="${f.k}" value="${(val || "#F2A0A0,#F0D9A0").split(",")[1]}" style="flex:none;width:46px;height:28px;padding:1px"></div>` +
+      `<div class="swrow">${GRADIENTS.map(([n, gg]) => `<button type="button" class="grb${val === gg ? " on" : ""}" data-gp="${f.k}" data-g="${gg}" title="${esc(n)}" style="background:linear-gradient(180deg,${gg})"></button>`).join("")}</div>`; break;
     case "html": return f.html(v);
     default: input = `<input type="text" id="${id}" data-k="${f.k}" value="${esc(val ?? "")}" placeholder="${esc(f.ph || "")}">`;
   }
@@ -1079,6 +1130,7 @@ function readFields(root, fields, v) {
   for (const f of fields) {
     if (f.show && !f.show(v)) continue;
     if (f.t === "pair") { const a = $$(`[data-k="${f.k}"]`, root).map(i => i.value === "" ? null : +i.value); v[f.k] = a.every(x => x === null) ? null : a; continue; }
+    if (f.t === "palette") { const r = $(`[data-pal="${f.k}"]:checked`, root); if (r) v[f.k] = r.value; continue; }
     if (f.t === "gradient") { const on = $(`[data-gon="${f.k}"]`, root); if (!on) continue; v[f.k] = on.checked ? `${$(`[data-g1="${f.k}"]`, root).value},${$(`[data-g2="${f.k}"]`, root).value}` : null; continue; }
     const el = $(`[data-k="${f.k}"]`, root); if (!el) continue;
     if (f.t === "bool") v[f.k] = el.checked;
@@ -1176,7 +1228,7 @@ function pageDialog(g) {
     { k: "fw", label: "Độ dày khung & tick", t: "number", step: 0.1, ph: "theo theme (1.2)" }, { k: "box", label: "Khung kín 4 cạnh", t: "bool" },
     { k: "font", label: "Font", t: "sel", opts: [["sans", "Sans (Arial / Liberation Sans)"], ["serif", "Serif (Times / Liberation Serif)"]] },
     { k: "fontsize", label: "Cỡ chữ chung", t: "number", step: 0.5 },
-    { k: "palette", label: "Bảng màu", t: "sel", opts: ["okabe", "pastel", "npg", "aaas", "bold", "tableau", "gray", "viridis", "plasma", "coolwarm"].map(p => [p, p]) },
+    { k: "palette", label: "Bảng màu", t: "palette", help: "Đổi bảng màu sẽ đặt lại màu các series chưa chọn màu riêng" },
     { k: "title", label: "Tiêu đề", t: "text" },
   ] });
 }
@@ -1196,7 +1248,12 @@ const ECHEM = [
   { k: "area", label: "Diện tích điện cực (cm²)", t: "number", step: 0.001, ph: "bỏ qua" },
   { k: "R", label: "R bù iR (Ω)", t: "number", step: 0.1, ph: "không bù" },
 ];
+const HATCHES = [["", "/// (mặc định)"], ["///", "/// chéo phải"], ["\\\\\\", "\\\\\\ chéo trái"], ["xxx", "xxx ô chéo"], ["|||", "||| dọc"], ["---", "--- ngang"], ["...", "... chấm"], ["ooo", "ooo vòng"]];
 const KIND_OPTS = {
+  xps: [{ k: "peak_fill", label: "Tô các peak", t: "sel", opts: [["gradient", "Gradient mờ dần về đường nền"], ["solid", "Tô đặc trong suốt"], ["hatch", "Gạch chéo (hatch)"], ["none", "Chỉ viền, không tô"]] },
+    { k: "fill_alpha", label: "Độ đậm vùng tô (0–1)", t: "number", step: 0.05, ph: "0.55 gradient / 0.35 đặc" },
+    { k: "hatch", label: "Kiểu gạch (khi chọn hatch)", t: "sel", opts: HATCHES.slice(1) },
+    { k: "hide_y", label: "Ẩn số trục Y (a.u.)", t: "bool" }],
   column: [{ k: "gradient", label: "Tô gradient (trên, dưới)", t: "gradient" }, { k: "value_labels", label: "Ghi giá trị trên cột", t: "bool" },
     { k: "value_fmt", label: "Định dạng số", t: "text", ph: "{:.4g}", help: "{:.2f} = 2 chữ số thập phân" }, { k: "rotate_x", label: "Xoay nhãn trục X (độ)", t: "number" },
     { k: "width", label: "Độ rộng nhóm cột (0–1)", t: "number", step: 0.05, ph: "0.8" }, { k: "edgecolor", label: "Màu viền cột", t: "color", auto: true }],
@@ -1238,7 +1295,7 @@ const FIT_KEYS = ["fit", "fit_from", "fit_to", "fit_eq", "fit_extend", "fit_colo
 function clearFit(s) { for (const k of FIT_KEYS) delete s[k]; }
 function fitDialog(g) {
   g = g || activeGraph(); if (!g) return status("Hãy mở một graph trước");
-  if (!["line", "scatter", "linesymbol", "area"].includes(g.kind)) {
+  if (!["line", "scatter", "linesymbol", "area", "xps"].includes(g.kind)) {
     if (!confirm(`Fit dùng cho hình Scatter / Line / Line + Symbol. Đổi "${g.name}" (${kindName(g.kind)}) sang Scatter để fit?`)) return;
     mutate(() => { g.kind = "scatter"; g.opts = {}; });
   }
@@ -1262,28 +1319,37 @@ function fitDialog(g) {
       });
     }) });
 }
-const BOOL_DEFAULTS = { normalize: true, calc: true, lines: true, equal: true, scale: true, ellipse: true, points: true, cluster_rows: true, cluster_cols: true };
+const BOOL_DEFAULTS = { hide_y: true, normalize: true, calc: true, lines: true, equal: true, scale: true, ellipse: true, points: true, cluster_rows: true, cluster_cols: true };
 function plotDetails(g, focusIndex) {
   g = g || activeGraph(); if (!g) return status("Hãy mở một graph");
   const book = byId(g.book);
   const work = clone(g);
   let cur = Math.min(focusIndex ?? 0, Math.max(0, work.series.length - 1));
-  const pal = { okabe: ["#0072B2", "#D55E00", "#009E73", "#CC79A7", "#E69F00", "#56B4E9", "#F0E442", "#000000"], pastel: ["#F06EAA", "#F08A8A", "#F5B98A", "#F2E3A0", "#8FD3F2", "#8F8FEA", "#B86FE6", "#7FD3A8"] }[g.palette] || ["#0072B2", "#D55E00", "#009E73", "#CC79A7", "#E69F00", "#56B4E9"];
+  work.palette = work.palette || "paper";
+  const curPal = () => palColors(work.palette, work.series.length);
   const colOpts = (none) => [...(none ? [["", "— không —"]] : []), ...book.cols.map(c => [c.name, `${c.name}: ${dispName(c)}`])];
-  const generic = ["line", "scatter", "linesymbol", "area", "column"].includes(g.kind);
+  const generic = ["line", "scatter", "linesymbol", "area", "column", "xps"].includes(g.kind);
+  const lineish = generic && g.kind !== "column";
   const SF = [
     { k: "label", label: "Tên trong chú giải", t: "text", ph: "theo Long Name" },
     { k: "y", label: "Cột Y", t: "sel", opts: colOpts(false) }, ...(TABLE_KINDS.has(g.kind) ? [] : [{ k: "x", label: "Cột X", t: "sel", opts: colOpts(true) }]),
     ...(generic ? [{ k: "yerr", label: "Cột sai số Y", t: "sel", opts: colOpts(true) }] : []),
-    { k: "color", label: "Màu", t: "color", auto: true },
+    ...(g.kind === "xps" ? [{ k: "role", label: "Vai trò (XPS)", t: "sel", opts: [["", "tự nhận theo tên cột"], ["raw", "Raw (dữ liệu đo)"], ["bg", "Background"], ["env", "Envelope (tổng fit)"], ["peak", "Peak thành phần"]] }] : []),
+    { k: "color", label: "Màu", t: "color", auto: true, swatches: () => [{ name: "Bảng màu hình", colors: [...new Set(curPal())] }, { name: "Bài báo", colors: PAL.paper.colors }, { name: "Nature", colors: PAL.npg.colors }, { name: "Trung tính", colors: NEUTRAL }] },
     ...(generic && g.kind !== "column" ? [
       { k: "marker", label: "Ký hiệu (Symbol)", t: "sel", opts: MARKERS }, { k: "ms", label: "Cỡ ký hiệu", t: "number", step: 0.5, ph: "6" },
-      { k: "fill", label: "Tô ký hiệu", t: "sel", opts: [["solid", "đặc"], ["hollow", "rỗng (nền trắng)"], ["none", "trong suốt"]] },
-      { k: "ls", label: "Kiểu nét", t: "sel", opts: [["solid", "liền —"], ["dash", "đứt – –"], ["dot", "chấm ···"], ["dashdot", "gạch chấm –·"], ["none", "không nối"]] }] : []),
+      { k: "fill", label: "Tô ký hiệu", t: "sel", opts: [["", "mặc định"], ["solid", "đặc"], ["hollow", "rỗng (nền trắng)"], ["none", "trong suốt"]] },
+      { k: "ls", label: "Kiểu nét", t: "sel", opts: [["", "mặc định"], ["solid", "liền —"], ["dash", "đứt – –"], ["dot", "chấm ···"], ["dashdot", "gạch chấm –·"], ["none", "không nối"]] }] : []),
     ...(g.kind !== "column" ? [{ k: "lw", label: "Độ dày nét", t: "number", step: 0.1, ph: "1.6" }] : []),
     ...(generic ? [{ k: "alpha", label: "Độ đậm (0–1)", t: "number", step: 0.05, ph: "1" }, { k: "capsize", label: "Đầu thanh sai số", t: "number", step: 0.5, ph: "3" }] : []),
     ...(generic && g.kind !== "column" ? [{ k: "y2", label: "Vẽ theo trục Y bên phải", t: "bool" }] : []),
-    ...(generic && g.kind !== "column" ? FIT_FIELDS("") : []),
+    ...(lineish ? [
+      { k: "fill_mode", label: "Tô vùng dưới đường", t: "sel", opts: [["", g.kind === "xps" ? "theo tuỳ chọn XPS" : g.kind === "area" ? "đặc (mặc định Area)" : "không tô"], ["solid", "Tô đặc trong suốt"], ["gradient", "Gradient mờ dần về đường nền"], ["hatch", "Gạch chéo (hatch)"], ["none", "Không tô"]] },
+      { k: "fill_to", label: "Tô xuống tới", t: "sel", opts: [["", g.kind === "xps" ? "Background (tự nhận)" : "trục 0"], ...colOpts(false)] },
+      { k: "fill_color", label: "Màu tô", t: "color", auto: true, swatches: () => [{ name: "Bảng màu hình", colors: [...new Set(curPal())] }, { name: "Bài báo", colors: PAL.paper.colors }] },
+      { k: "fill_alpha", label: "Độ đậm vùng tô (0–1)", t: "number", step: 0.05, ph: "0.35–0.55" },
+      { k: "hatch", label: "Kiểu gạch", t: "sel", opts: HATCHES }] : []),
+    ...(lineish ? FIT_FIELDS("") : []),
     { k: "visible", label: "Hiện series này", t: "bool" },
   ];
   const KO = KIND_OPTS[g.kind] || [];
@@ -1292,15 +1358,19 @@ function plotDetails(g, focusIndex) {
     name: "Series (Plot)",
     html: () => {
       const s = work.series[cur] || {};
-      const sv = { visible: true, marker: "default", fill: "solid", ls: "solid", fit_eq: true, ...s };
-      return `<div class="pdgrid"><div><div class="slist">${work.series.map((x, i) => `<div class="si${i === cur ? " on" : ""}" data-i="${i}"><span class="sw" style="background:${x.color || pal[i % pal.length]}"></span>${esc(x.label || dispName(book.cols.find(c => c.name === x.y) || { name: x.y }))}</div>`).join("") || '<div class="si">(chưa có series)</div>'}</div>
+      const sv = { visible: true, marker: "default", fit_eq: true, ...s };
+      const pal = curPal();
+      return `<div class="pdgrid"><div><label class="note" style="display:block;margin:0 0 3px">Bảng màu cho cả hình</label><select data-pdpal style="width:100%;margin-bottom:4px">${PALETTE_DEFS.map(p => `<option value="${p.id}" ${p.id === work.palette ? "selected" : ""}>${esc(p.name)}</option>`).join("")}</select>
+        <div class="strip big" style="margin-bottom:8px">${palColors(work.palette, Math.max(work.series.length, PAL[work.palette] && PAL[work.palette].seq ? work.series.length : 8)).map(c => `<i style="background:${c}"></i>`).join("")}</div>
+        <div class="slist">${work.series.map((x, i) => `<div class="si${i === cur ? " on" : ""}" data-i="${i}"><span class="sw" style="background:${x.color || pal[i % pal.length]}"></span>${esc(plainMath(x.label || dispName(book.cols.find(c => c.name === x.y) || { name: x.y })))}</div>`).join("") || '<div class="si">(chưa có series)</div>'}</div>
         <div class="sbtns"><button class="btn" data-sa="add">+ Thêm</button><button class="btn" data-sa="del">Xoá</button><button class="btn" data-sa="up">▲</button><button class="btn" data-sa="down">▼</button></div>
         <div class="sbtns"><button class="btn" data-sa="applyall" title="Áp kiểu ký hiệu/nét/cỡ của series này cho mọi series">Áp kiểu cho tất cả</button></div></div>
         <div>${work.series.length ? `<div class="fgrid">${SF.map(f => fieldHTML(f, sv)).join("")}</div>` : ""}</div></div>`;
     },
-    read: (root) => { const s = work.series[cur]; if (!s) return; const v = readFields(root, SF, { ...s }); Object.assign(s, v); for (const k of Object.keys(s)) if (s[k] === "" || s[k] === null || s[k] === undefined) delete s[k]; if (!s.y2) delete s.y2; if (s.visible !== false) delete s.visible; },
+    read: (root) => { const s = work.series[cur]; if (!s) return; const v = readFields(root, SF, { ...s }); Object.assign(s, v); for (const k of Object.keys(s)) if (s[k] === "" || s[k] === null || s[k] === undefined) delete s[k]; if (!s.y2) delete s.y2; if (s.visible !== false) delete s.visible; if (s.marker === "default") delete s.marker; if (!s.fit) { for (const k of FIT_KEYS) delete s[k]; } else if (s.fit_eq === true) delete s.fit_eq; if (s.fit_extend === false) delete s.fit_extend; },
     bind: (root, _v, redraw) => {
       const fsel = $('[data-k="fit"]', root); if (fsel) fsel.addEventListener("change", () => { seriesTab.read(root); redraw(); });
+      const ps = $("[data-pdpal]", root); if (ps) ps.onchange = () => { seriesTab.read(root); work.palette = ps.value; work.series.forEach(x => { delete x.color; }); redraw(); status("Đã đổi bảng màu — màu từng series đặt lại theo bảng mới"); };
       $$(".si[data-i]", root).forEach(el => el.onclick = () => { seriesTab.read(root); cur = +el.dataset.i; redraw(); });
       $$("[data-sa]", root).forEach(b => b.onclick = () => {
         seriesTab.read(root);
@@ -1327,7 +1397,7 @@ function plotDetails(g, focusIndex) {
   };
   const tabs = [seriesTab, ...(KO.length ? [optTab] : []), ...(generic || ["lsv", "tafel", "cv", "spectra", "bet", "tauc", "cdl", "nyquist"].includes(g.kind) ? [refTab] : [])];
   const commit = v => mutate(() => {
-    g.series = work.series; g.reflines = work.reflines || [];
+    g.series = work.series; g.reflines = work.reflines || []; g.palette = work.palette;
     const o = { ...v }; for (const k of Object.keys(o)) if (o[k] === null || o[k] === "") delete o[k];
     if (work.opts.label_col) o.label_col = work.opts.label_col;
     g.opts = o;
@@ -1336,7 +1406,7 @@ function plotDetails(g, focusIndex) {
 }
 
 /* ================================================================== format copy / templates */
-const STYLE_KEYS = ["theme", "font", "fontsize", "palette", "size", "frame"];
+const STYLE_KEYS = ["theme", "font", "fontsize", "palette", "size", "frame"];  // template có palette sẽ đặt lại màu series
 function styleOf(g) {
   const st = Object.fromEntries(STYLE_KEYS.map(k => [k, clone(g[k])]));
   const ax = a => { const o = clone(a || {}); delete o.min; delete o.max; delete o.label; return o; };
@@ -1349,6 +1419,7 @@ function applyStyle(g, st) {
   for (const k of STYLE_KEYS) if (st[k] !== undefined) g[k] = clone(st[k]);
   for (const k of ["xaxis", "yaxis", "y2axis"]) g[k] = { ...(g[k] || {}), ...clone(st[k] || {}) };
   g.legend = { ...(g.legend || {}), ...clone(st.legend || {}) };
+  if (st.palette && !(st.series && st.series.length)) g.series.forEach(s => { delete s.color; });
   g.series.forEach((s, i) => { const ss = st.series && st.series.length ? st.series[i % st.series.length] : {}; Object.assign(s, clone(ss)); });
 }
 let copiedFormat = null;
@@ -1367,7 +1438,11 @@ function applyTemplateDialog() {
   const builtin = { "Bài báo 1 cột (3.3 × 2.6 in, Arial 8)": { size: [3.3, 2.6], fontsize: 8, font: "sans", theme: "origin", frame: { width: 1 } },
     "Bài báo 2 cột (7 × 4 in, Arial 10)": { size: [7, 4], fontsize: 10, font: "sans", theme: "origin" },
     "Slide PowerPoint (6 × 4.5 in, chữ 16)": { size: [6, 4.5], fontsize: 16, font: "sans", theme: "origin", frame: { width: 1.6 } },
-    "Kiểu Times, tick vào trong": { font: "serif", theme: "origin-in" } };
+    "Kiểu Times, tick vào trong": { font: "serif", theme: "origin-in" },
+    "Nature – 1 cột (89 mm, Arial 7 pt, bảng màu Nature)": { size: [3.5, 2.8], fontsize: 7, font: "sans", theme: "origin", frame: { width: 0.8 }, palette: "npg" },
+    "Nature – 2 cột (183 mm, Arial 7 pt)": { size: [7.2, 4.2], fontsize: 7, font: "sans", theme: "origin", frame: { width: 0.8 }, palette: "npg" },
+    "ACS – 1 cột (3.25 in, Arial 8 pt, pastel bài báo)": { size: [3.25, 2.7], fontsize: 8, font: "sans", theme: "origin", frame: { width: 1 }, palette: "paper" },
+    "ACS – 2 cột (7 in, Arial 9 pt)": { size: [7, 4.2], fontsize: 9, font: "sans", theme: "origin", frame: { width: 1 }, palette: "paper" } };
   const all = { ...builtin, ...T };
   dialog({ title: "Áp dụng template", values: { t: Object.keys(all)[0] }, fields: [{ k: "t", label: "Template", t: "sel", opts: Object.keys(all).map(n => [n, (T[n] ? "★ " : "") + n]) }],
     extra: names.length ? "" : '<p class="note">Lưu template của riêng bạn: Graph → Lưu làm template.</p>',

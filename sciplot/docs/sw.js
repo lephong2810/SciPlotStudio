@@ -1,6 +1,6 @@
 /* Service worker của SciPlot Studio: cho phép cài như app và chạy offline.
    VERSION được build_docs.py cập nhật tự động mỗi khi mã nguồn thay đổi. */
-const VERSION = "eba23e0d7b";
+const VERSION = "02aca8214f";
 const CACHE = "sciplot-" + VERSION;
 const SHELL = [
   "./", "index.html", "studio.css", "app.js", "sciplot.py", "studio.py", "manifest.webmanifest",
