@@ -245,7 +245,9 @@ def _plot_xy(G, ax, items, styles):
         ls = st["ls"] if kind != "scatter" else "None"
         kw = dict(color=st["color"], lw=st["lw"], ls=ls, marker=marker, ms=st["ms"], label=d["label"],
                   mfc=(st["color"] if st["fill"] == "solid" else "white" if st["fill"] == "hollow" else "none"),
-                  mec=st["color"], mew=max(0.8, st["lw"] * 0.7), zorder=3, alpha=st["alpha"])
+                  mec=s.get("mec") or st["color"],
+                  mew=float(s["mew"]) if s.get("mew") not in (None, "") else max(0.8, st["lw"] * 0.7),
+                  zorder=3, alpha=st["alpha"])
         fmode = s.get("fill_mode")
         if role == "peak" and not fmode:
             fmode = (G.get("opts") or {}).get("peak_fill", "gradient")

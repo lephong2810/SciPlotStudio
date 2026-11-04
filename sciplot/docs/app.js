@@ -748,6 +748,10 @@ async function openSample(i) {
     if (unstackBy) target = doUnstack(book, byL(unstackBy[0]), byL(unstackBy[1]), byL(unstackBy[2]), true);
     else if (looksLong(book) && !TABLE_KINDS.has(kind)) target = doUnstack(book, book.cols.find(c => c.desig === "X").name, book.cols.find(c => c.desig === "Y").name, book.cols.find(c => c.desig === "L").name, true);
     plotCmd(kind, target, extra, label);
+    // mở luôn workbook số liệu cạnh hình mẫu để thay số trực tiếp
+    if (!P.open.includes(target.id)) { const gi = P.open.indexOf(P.active); P.open.splice(gi < 0 ? P.open.length : gi, 0, target.id); }
+    renderTabs(); renderExplorer();
+    status(`Đã mở hình mẫu và workbook ${target.name} — thay số trong worksheet, bấm lại tab hình để xem cập nhật`);
   } catch (e) { status("Không mở được dữ liệu mẫu: " + e.message); console.error(e); }
 }
 
@@ -1338,6 +1342,8 @@ function plotDetails(g, focusIndex) {
     { k: "color", label: "Màu", t: "color", auto: true, swatches: () => [{ name: "Bảng màu hình", colors: [...new Set(curPal())] }, { name: "Bài báo", colors: PAL.paper.colors }, { name: "Nature", colors: PAL.npg.colors }, { name: "Trung tính", colors: NEUTRAL }] },
     ...(generic && g.kind !== "column" ? [
       { k: "marker", label: "Ký hiệu (Symbol)", t: "sel", opts: MARKERS }, { k: "ms", label: "Cỡ ký hiệu", t: "number", step: 0.5, ph: "6" },
+      { k: "mew", label: "Độ dày viền ký hiệu", t: "number", step: 0.1, ph: "tự động (≈ 0.7 × độ dày nét)" },
+      { k: "mec", label: "Màu viền ký hiệu", t: "color", auto: true, swatches: () => [{ name: "Trung tính", colors: NEUTRAL }, { name: "Bảng màu hình", colors: [...new Set(curPal())] }] },
       { k: "fill", label: "Tô ký hiệu", t: "sel", opts: [["", "mặc định"], ["solid", "đặc"], ["hollow", "rỗng (nền trắng)"], ["none", "trong suốt"]] },
       { k: "ls", label: "Kiểu nét", t: "sel", opts: [["", "mặc định"], ["solid", "liền —"], ["dash", "đứt – –"], ["dot", "chấm ···"], ["dashdot", "gạch chấm –·"], ["none", "không nối"]] }] : []),
     ...(g.kind !== "column" ? [{ k: "lw", label: "Độ dày nét", t: "number", step: 0.1, ph: "1.6" }] : []),
@@ -1379,7 +1385,7 @@ function plotDetails(g, focusIndex) {
         if (a === "del" && work.series.length) { work.series.splice(cur, 1); cur = Math.max(0, cur - 1); }
         if (a === "up" && cur > 0) { [work.series[cur - 1], work.series[cur]] = [work.series[cur], work.series[cur - 1]]; cur--; }
         if (a === "down" && cur < work.series.length - 1) { [work.series[cur + 1], work.series[cur]] = [work.series[cur], work.series[cur + 1]]; cur++; }
-        if (a === "applyall") { const s = work.series[cur]; for (const o of work.series) for (const k of ["marker", "ms", "fill", "ls", "lw", "alpha", "capsize"]) if (s[k] !== undefined) o[k] = s[k]; else delete o[k]; status("Đã áp kiểu cho mọi series"); }
+        if (a === "applyall") { const s = work.series[cur]; for (const o of work.series) for (const k of ["marker", "ms", "mew", "mec", "fill", "ls", "lw", "alpha", "capsize"]) if (s[k] !== undefined) o[k] = s[k]; else delete o[k]; status("Đã áp kiểu cho mọi series"); }
         redraw();
       });
     },
@@ -1412,7 +1418,7 @@ function styleOf(g) {
   const ax = a => { const o = clone(a || {}); delete o.min; delete o.max; delete o.label; return o; };
   st.xaxis = ax(g.xaxis); st.yaxis = ax(g.yaxis); st.y2axis = ax(g.y2axis);
   st.legend = clone(g.legend || {});
-  st.series = g.series.map(s => Object.fromEntries(["color", "marker", "ms", "fill", "ls", "lw", "alpha", "capsize"].filter(k => s[k] !== undefined).map(k => [k, s[k]])));
+  st.series = g.series.map(s => Object.fromEntries(["color", "marker", "ms", "mew", "mec", "fill", "ls", "lw", "alpha", "capsize"].filter(k => s[k] !== undefined).map(k => [k, s[k]])));
   return st;
 }
 function applyStyle(g, st) {
