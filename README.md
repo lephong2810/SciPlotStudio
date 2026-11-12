@@ -8,9 +8,9 @@
 
 ![SciPlot Studio: 20 plot types](sciplot/gallery/SciPlot_gallery.png)
 
-SciPlot Studio is a worksheet + graph editor built for researchers in materials science, catalysis, electrochemistry and the life sciences. You paste or import your data, pick a plot type, then fine-tune every element by double-clicking it, and finally export a figure ready for a journal. No installation, no account, no license key.
+### 👉 [Open SciPlot Studio: lephong2810.github.io/SciPlotStudio](https://lephong2810.github.io/SciPlotStudio/)
 
-👉 **Try it now: <https://lephong2810.github.io/SciPlotStudio/>**
+SciPlot Studio is a worksheet + graph editor built for researchers in materials science, catalysis, electrochemistry and the life sciences. You paste or import your data, pick a plot type, then fine-tune every element by double-clicking it, and finally export a figure ready for a journal. No installation, no account, no license key.
 
 ---
 

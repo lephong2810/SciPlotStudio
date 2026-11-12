@@ -189,7 +189,34 @@ function aoaToCols(aoa, { skip = 0, nhdr = "auto", dec = "." } = {}) {
     } else if (!num) c.desig = "L";
     else if (!seenX) { c.desig = "X"; seenX = true; }
   });
+  autoXY(keep);
   return { cols: keep, nhdr };
+}
+// Dữ liệu kiểu X1 Y1 X2 Y2…: các cột số trùng Long Name với cột X đầu tiên (vd. "Temperature" lặp lại),
+// hoặc có tên dạng x, x1, x_2… được đặt làm X — mỗi Y sau đó dùng cột X gần nhất bên trái.
+function autoXY(cols) {
+  const fx = cols.find(c => c.desig === "X" && colIsNumeric(c)); if (!fx) return;
+  const norm = s => String(s || "").trim().toLowerCase();
+  const key = norm(fx.lname), unit = norm(fx.units);
+  const isXName = s => /^x\s*[_-]?\s*\d*$/.test(norm(s));
+  const cand = cols.filter(c => c !== fx && colIsNumeric(c) && c.desig === "Y" &&
+    ((key && norm(c.lname) === key && norm(c.units) === unit) || (isXName(fx.lname) && isXName(c.lname))));
+  // chỉ nhận khi mỗi cột X mới có ít nhất một cột Y theo sau (tránh biến cả bảng thành X)
+  cand.forEach(c => { const i = cols.indexOf(c); if (cols[i + 1] && colIsNumeric(cols[i + 1]) && !cand.includes(cols[i + 1])) c.desig = "X"; });
+}
+// số thứ tự nhóm X (X1, Y1, X2, Y2…) để hiện trên tiêu đề cột khi workbook có nhiều cột X
+function xGroups(book) {
+  const nX = book.cols.filter(c => c.desig === "X").length; if (nX < 2) return book.cols.map(() => "");
+  let g = 0; return book.cols.map(c => { if (c.desig === "X") g++; return g && ["X", "Y", "yEr"].includes(c.desig) ? String(g) : ""; });
+}
+function setXYPairs(pattern) {
+  const book = activeBook(); if (!book) return status(I18("Hãy mở một workbook"));
+  let idx = selectedCols(book); if (idx.length < 2) idx = book.cols.map((c, i) => i).filter(i => colIsNumeric(book.cols[i]));
+  const pat = pattern.split(",");
+  // "X,Y*": một cột X chung đầu tiên, mọi cột còn lại là Y (X Y Y Y…)
+  const des = k => pattern === "X,Y*" ? (k ? "Y" : "X") : pat[k % pat.length];
+  mutate(() => idx.forEach((j, k) => { book.cols[j].desig = des(k); }), { books: [book] });
+  status(I18("Đã đặt kiểu cột — mỗi cột Y dùng cột X gần nhất bên trái. Chọn các cột Y rồi vẽ."));
 }
 function bestSheet(wb) {
   let best = wb.SheetNames[0], score = -1;
@@ -330,7 +357,8 @@ const MENUS = () => [
   ]],
   ["Column", [
     [I18("Đặt làm X"), () => setDesig("X")], [I18("Đặt làm Y"), () => setDesig("Y")], [I18("Đặt làm Y Error"), () => setDesig("yEr")],
-    [I18("Đặt làm Label (chữ)"), () => setDesig("L")], [I18("Bỏ qua (Disregard)"), () => setDesig("N")], "-",
+    [I18("Đặt làm Label (chữ)"), () => setDesig("L")], [I18("Bỏ qua (Disregard)"), () => setDesig("N")],
+    [I18("Đặt X Y Y Y (một X chung)"), () => setXYPairs("X,Y*")], [I18("Đặt cặp XY XY (X1 Y1, X2 Y2…)"), () => setXYPairs("X,Y")], [I18("Đặt XYyEr XYyEr (có sai số)"), () => setXYPairs("X,Y,yEr")], "-",
     [I18("Set Column Values (công thức)…"), () => formulaDialog(), "Ctrl+Q"], [I18("Thêm cột"), () => addColumn()], [I18("Chèn cột bên trái"), () => addColumn(true)],
     [I18("Xoá cột đang chọn"), () => deleteColumns()], "-",
     [I18("Tách theo nhóm (Unstack)…"), () => unstackDialog()],
@@ -500,8 +528,9 @@ function renderSheet(book, w) {
   const S = sstate(book);
   const n = nrows(book), shown = Math.min(Math.max(n + 20, 30), S.shown + 20);
   const metaRows = [["lname", "Long Name"], ["units", "Units"], ["comment", "Comments"]];
+  const xg = xGroups(book);
   let h = `<div class="sheetwrap"><table class="sheet"><thead><tr><th class="rowh"></th>` +
-    book.cols.map((c, j) => `<th data-c="${j}" class="${S.cols.has(j) ? "colsel" : ""}${I18("\" title=\"Bấm chọn cột · chuột phải: đổi kiểu cột, công thức…\">")}${esc(c.name)}<span class="desig d-${c.desig}">(${c.desig})</span></th>`).join("") + `</tr></thead><tbody>`;
+    book.cols.map((c, j) => `<th data-c="${j}" class="${S.cols.has(j) ? "colsel" : ""}${I18("\" title=\"Bấm chọn cột · chuột phải: đổi kiểu cột, công thức…\">")}${esc(c.name)}<span class="desig d-${c.desig}">(${c.desig}${xg[j]})</span></th>`).join("") + `</tr></thead><tbody>`;
   for (const [k, lab] of metaRows) h += `<tr class="meta"><th class="rowh">${lab}</th>` + book.cols.map((c, j) => `<td data-m="${k}" data-c="${j}" class="${S.cols.has(j) ? "colsel" : ""}">${esc(c[k] || "")}</td>`).join("") + "</tr>";
   for (let r = 0; r < shown; r++) h += `<tr><th class="rowh">${r + 1}</th>` + book.cols.map((c, j) => { const v = c.data[r]; return `<td data-r="${r}" data-c="${j}" class="${typeof v === "number" ? "num" : ""}${S.cols.has(j) ? " colsel" : ""}">${esc(cellText(v))}</td>`; }).join("") + "</tr>";
   h += `</tbody></table>${n + 20 > shown ? `${I18("<div class=\"sheetfoot\">Đang hiện ")}${shown} / ${n}${I18(" dòng · <button class=\"mini\" id=\"more_")}${book.id}${I18("\">Hiện thêm</button></div>")}` : ""}</div>`;
@@ -532,7 +561,7 @@ function renderSheet(book, w) {
     const th = e.target.closest("thead th[data-c]"); if (!th) return;
     e.preventDefault(); const j = +th.dataset.c; if (!S.cols.has(j)) { S.cols.clear(); S.cols.add(j); renderSheet(book, w); }
     openPopup($("#ctxmenu"), [
-      [I18("Đặt làm X"), () => setDesig("X")], [I18("Đặt làm Y"), () => setDesig("Y")], [I18("Đặt làm Y Error"), () => setDesig("yEr")], [I18("Đặt làm Label"), () => setDesig("L")], [I18("Bỏ qua"), () => setDesig("N")], "-",
+      [I18("Đặt làm X"), () => setDesig("X")], [I18("Đặt làm Y"), () => setDesig("Y")], [I18("Đặt làm Y Error"), () => setDesig("yEr")], [I18("Đặt làm Label"), () => setDesig("L")], [I18("Đặt X Y Y Y"), () => setXYPairs("X,Y*")], [I18("Đặt cặp XY XY"), () => setXYPairs("X,Y")], [I18("Bỏ qua"), () => setDesig("N")], "-",
       ["Set Column Values…", () => formulaDialog()], [I18("Chèn cột bên trái"), () => addColumn(true)], [I18("Thêm cột"), () => addColumn()], [I18("Xoá cột"), () => deleteColumns()], "-",
       [I18("#Vẽ từ cột đã chọn")], ...["linesymbol", "line", "scatter", "column", "spectra"].map(k => [kindName(k), () => plotCmd(k)]),
     ], e.clientX, e.clientY);
@@ -716,6 +745,7 @@ const SAMPLES = [
   ["photocatalysis_demo.csv", I18("Phân huỷ quang xúc tác (C/C₀)"), "linesymbol", { palette: "paper", xaxis: { label: "Time (min)", min: -40, max: 130, step: 30 }, yaxis: { label: "C/C$_0$", min: 0, max: 1.25 }, legend: { loc: [0.6, 0.8] } }],
   ["her_rate_demo.csv", I18("Tốc độ sinh H₂ (cột gradient)"), "column", { opts: { gradient: "#82D0FF,#BC75FF", value_labels: true, value_fmt: "{:.3g}", rotate_x: 30 }, yaxis: { label: "H$_2$ evolution (mmol h$^{-1}$ g$^{-1}$)", min: 0, max: 16 }, legend: { show: false } }],
   ["xrd_demo.csv", I18("XRD xếp chồng"), "spectra", {}],
+  ["multi_xy_demo.csv", I18("Nhiều cặp X–Y (X1Y1, X2Y2, X3Y3)"), "linesymbol", { xaxis: { label: "Temperature (°C)" }, yaxis: { label: "Weight (%)" }, legend: { loc: [0.62, 0.95] } }],
   ["lsv_oer_demo.csv", "LSV OER", "lsv", { opts: { reaction: "OER", ref: "Hg/HgO", pH: 14, current_unit: "mA", area: 0.196, R: 2.5 } }],
   ["cv_scanrate_demo.csv", I18("CV nhiều tốc độ quét"), "cv", { opts: { ref: "RHE", current_unit: "mA/cm2" } }],
   ["eis_demo.csv", "EIS Nyquist", "nyquist", {}],

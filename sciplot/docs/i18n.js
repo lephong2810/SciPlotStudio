@@ -573,7 +573,14 @@ const I18N_EN = {"Dữ liệu mẫu": "Sample data",
 "Khổ 1 cột 89 mm (sans 7 pt, NPG-style)":"1 column 89 mm (sans 7 pt, NPG-style)",
 "Khổ 2 cột 183 mm (sans 7 pt)":"2 columns 183 mm (sans 7 pt)",
 "Khổ 1 cột 3.25 in (sans 8 pt, pastel bài báo)":"1 column 3.25 in (sans 8 pt, paper pastel)",
-"Khổ 2 cột 7 in (sans 9 pt)":"2 columns 7 in (sans 9 pt)"};
+"Khổ 2 cột 7 in (sans 9 pt)":"2 columns 7 in (sans 9 pt)",
+"Đặt cặp XY XY (X1 Y1, X2 Y2…)":"Set as XY XY (X1 Y1, X2 Y2…)",
+"Đặt XYyEr XYyEr (có sai số)":"Set as XYyEr XYyEr (with errors)",
+"Đặt cặp XY XY":"Set as XY XY",
+"Nhiều cặp X–Y (X1Y1, X2Y2, X3Y3)":"Multiple X–Y pairs (X1Y1, X2Y2, X3Y3)",
+"Đặt X Y Y Y (một X chung)":"Set as X Y Y Y (one shared X)",
+"Đặt X Y Y Y":"Set as X Y Y Y",
+"Đã đặt kiểu cột — mỗi cột Y dùng cột X gần nhất bên trái. Chọn các cột Y rồi vẽ.":"Column types set — each Y column uses the nearest X column to its left. Select the Y columns and plot."};
 function I18(s) { return LANG === "en" && Object.prototype.hasOwnProperty.call(I18N_EN, s) ? I18N_EN[s] : s; }
 document.addEventListener("DOMContentLoaded", () => {
   if (LANG !== "en") return;
