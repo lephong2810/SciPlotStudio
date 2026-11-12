@@ -530,7 +530,7 @@ function renderSheet(book, w) {
   const metaRows = [["lname", "Long Name"], ["units", "Units"], ["comment", "Comments"]];
   const xg = xGroups(book);
   let h = `<div class="sheetwrap"><table class="sheet"><thead><tr><th class="rowh"></th>` +
-    book.cols.map((c, j) => `<th data-c="${j}" class="${S.cols.has(j) ? "colsel" : ""}${I18("\" title=\"Bấm chọn cột · chuột phải: đổi kiểu cột, công thức…\">")}${esc(c.name)}<span class="desig d-${c.desig}">(${c.desig}${xg[j]})</span></th>`).join("") + `</tr></thead><tbody>`;
+    book.cols.map((c, j) => `<th data-c="${j}" class="${S.cols.has(j) ? "colsel" : ""}${I18("\" title=\"Bấm chọn cột · chuột phải: đổi kiểu cột, công thức…\">")}${esc(c.name)}<span class="desig d-${c.desig}" title="${I18("Bấm để đổi kiểu cột (X, Y, Y Error…)")}">(${c.desig}${xg[j]})</span></th>`).join("") + `</tr></thead><tbody>`;
   for (const [k, lab] of metaRows) h += `<tr class="meta"><th class="rowh">${lab}</th>` + book.cols.map((c, j) => `<td data-m="${k}" data-c="${j}" class="${S.cols.has(j) ? "colsel" : ""}">${esc(c[k] || "")}</td>`).join("") + "</tr>";
   for (let r = 0; r < shown; r++) h += `<tr><th class="rowh">${r + 1}</th>` + book.cols.map((c, j) => { const v = c.data[r]; return `<td data-r="${r}" data-c="${j}" class="${typeof v === "number" ? "num" : ""}${S.cols.has(j) ? " colsel" : ""}">${esc(cellText(v))}</td>`; }).join("") + "</tr>";
   h += `</tbody></table>${n + 20 > shown ? `${I18("<div class=\"sheetfoot\">Đang hiện ")}${shown} / ${n}${I18(" dòng · <button class=\"mini\" id=\"more_")}${book.id}${I18("\">Hiện thêm</button></div>")}` : ""}</div>`;
@@ -544,6 +544,14 @@ function renderSheet(book, w) {
     const th = e.target.closest("thead th[data-c]"), td = e.target.closest("td");
     if (th) {
       const j = +th.dataset.c;
+      if (e.button === 0 && e.target.closest(".desig") && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+        // bấm vào nhãn (X)/(Y) trên tiêu đề cột → chọn kiểu cho riêng cột đó
+        e.preventDefault(); if (!S.cols.has(j) || S.cols.size > 1) { S.cols.clear(); S.cols.add(j); renderSheet(book, w); }
+        const r = e.target.getBoundingClientRect(); const cur = book.cols[j].desig;
+        const it = (d, t) => [(cur === d ? "✓ " : "") + t, () => setDesig(d)];
+        setTimeout(() => openPopup($("#ctxmenu"), [["#" + I18("Kiểu cột") + " " + book.cols[j].name], it("X", "X"), it("Y", "Y"), it("yEr", "Y Error"), it("L", "Label"), it("N", I18("Bỏ qua"))], r.left, r.bottom + 2), 0);
+        return;
+      }
       if (e.shiftKey && S.cols.size) { const a = Math.min(...S.cols); for (let k = Math.min(a, j); k <= Math.max(a, j); k++) S.cols.add(k); }
       else if (e.ctrlKey || e.metaKey) S.cols.has(j) ? S.cols.delete(j) : S.cols.add(j);
       else { S.cols.clear(); S.cols.add(j); }
@@ -768,7 +776,7 @@ async function openSample(i) {
   if (!ready) { status(I18("Python đang tải — chờ chấm xanh 'Sẵn sàng' ở góc trên rồi mở lại")); return; }
   try {
     const text = await (await fetch("examples/" + file)).text();
-    const { cols } = aoaToCols(textToAoa(text, "auto", "."), { nhdr: 1 });
+    const { cols } = aoaToCols(textToAoa(text, "auto", "."), { nhdr: file === "multi_xy_demo.csv" ? 2 : 1 });
     let book;
     mutate(() => { book = newBook(file.replace(/\.csv$/, ""), cols); }, { books: [], rebuild: false });
     syncBook(book);

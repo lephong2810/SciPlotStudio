@@ -71,7 +71,7 @@ table.sheet td.sel{outline:2px solid var(--accent);outline-offset:-2px}
 table.sheet td.colsel,table.sheet th.colsel{background:var(--sel)!important}
 table.sheet td.editing{outline:2px solid var(--accent2);outline-offset:-2px;background:#fff!important}
 table.sheet td.num{text-align:right}
-.desig{font-size:11px;margin-left:2px}
+.desig{font-size:11px;margin-left:2px;cursor:pointer;padding:0 3px;border-radius:3px}.desig:hover{background:rgba(0,0,0,.08);outline:1px solid rgba(0,0,0,.18)}
 .d-X{color:var(--x)} .d-Y{color:var(--y)} .d-yEr{color:var(--err)} .d-L{color:var(--lab)} .d-N{color:#aaa}
 .sheetfoot{padding:8px;color:var(--muted)}
 /* graph window */

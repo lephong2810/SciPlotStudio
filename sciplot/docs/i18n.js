@@ -580,6 +580,8 @@ const I18N_EN = {"Dữ liệu mẫu": "Sample data",
 "Nhiều cặp X–Y (X1Y1, X2Y2, X3Y3)":"Multiple X–Y pairs (X1Y1, X2Y2, X3Y3)",
 "Đặt X Y Y Y (một X chung)":"Set as X Y Y Y (one shared X)",
 "Đặt X Y Y Y":"Set as X Y Y Y",
+"Kiểu cột":"Column type",
+"Bấm để đổi kiểu cột (X, Y, Y Error…)":"Click to change column type (X, Y, Y Error…)",
 "Đã đặt kiểu cột — mỗi cột Y dùng cột X gần nhất bên trái. Chọn các cột Y rồi vẽ.":"Column types set — each Y column uses the nearest X column to its left. Select the Y columns and plot."};
 function I18(s) { return LANG === "en" && Object.prototype.hasOwnProperty.call(I18N_EN, s) ? I18N_EN[s] : s; }
 document.addEventListener("DOMContentLoaded", () => {
