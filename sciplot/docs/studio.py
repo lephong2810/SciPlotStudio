@@ -423,7 +423,9 @@ def _fit_series(ax, target, x, y, s, st, label, k):
 
 
 def _plot_columns(G, ax, items, styles):
+    """Cột: mode = group (nhiều cột cạnh nhau tại mỗi x) | stack (xếp chồng) | stack100 (xếp chồng, quy về 100 %)."""
     o = G.get("opts", {})
+    mode = o.get("mode") or "group"
     cats = None
     for d in items:
         if d["xcat"] is not None:
@@ -432,31 +434,60 @@ def _plot_columns(G, ax, items, styles):
     if cats is None:
         xv = items[0]["x"] if items else np.array([])
         cats = [f"{v:g}" if np.isfinite(v) else "" for v in xv]
+    nc = len(cats)
     n = len(items)
-    width = float(o.get("width", 0.8))
-    bw = width / max(n, 1)
-    pos = np.arange(len(cats), dtype=float)
+    width = float(o.get("width", 0.8 if mode == "group" else 0.65))
+    stacked = mode in ("stack", "stack100")
+    bw = width if stacked else width / max(n, 1)
+    gap = float(o.get("bar_gap", 0.08 if not stacked else 0.0))
+    pos = np.arange(nc, dtype=float)
+    Y = np.zeros((n, nc))
+    E = np.full((n, nc), np.nan)
+    for k, d in enumerate(items):
+        y = np.nan_to_num(np.asarray(d["y"][:nc], float))
+        Y[k, :len(y)] = y
+        if d["err"] is not None:
+            e = np.abs(np.asarray(d["err"][:nc], float))
+            E[k, :len(e)] = e
+    if mode == "stack100":
+        tot = Y.sum(axis=0)
+        tot[tot == 0] = 1
+        E = E / tot * 100
+        Y = Y / tot * 100
+    bottom = np.zeros(nc)
     handles = []
-    ytop = 0
+    ytop = 0.0
+    fmt = o.get("value_fmt") or ("{:.1f}" if mode == "stack100" else "{:.4g}")
+    fs = plt.rcParams["font.size"] - 1
     for k, (d, st) in enumerate(zip(items, styles)):
-        y = d["y"][:len(cats)]
-        xx = pos[:len(y)] + (k - (n - 1) / 2) * bw
-        bars = ax.bar(xx, np.nan_to_num(y), width=bw * 0.92, color=st["color"], edgecolor=o.get("edgecolor", "#333333"),
-                      linewidth=0.9, label=d["label"], zorder=2, alpha=st["alpha"])
-        if o.get("gradient"):
+        y = Y[k]
+        xx = pos if stacked else pos + (k - (n - 1) / 2) * bw
+        bars = ax.bar(xx, y, width=bw * (1 - gap), bottom=bottom if stacked else None, color=st["color"],
+                      edgecolor=o.get("edgecolor", "#333333"), linewidth=0.9, label=d["label"], zorder=2, alpha=st["alpha"])
+        if o.get("gradient") and not stacked:
             sp._gradient_bars(ax, bars, o["gradient"])
         handles.append(bars)
-        e = d["err"][:len(cats)] if d["err"] is not None else None
-        if e is not None:
-            ax.errorbar(xx, np.nan_to_num(y), yerr=np.nan_to_num(np.abs(e)), fmt="none", ecolor="#333333",
-                        elinewidth=0.9, capsize=st["capsize"], zorder=3)
-        ytop = max(ytop, np.nanmax(np.nan_to_num(y) + (np.nan_to_num(e) if e is not None else 0)) if len(y) else 0)
+        top = bottom + y if stacked else y
+        e = E[k]
+        if np.isfinite(e).any():
+            ax.errorbar(xx, top, yerr=np.nan_to_num(e), fmt="none", ecolor="#333333", elinewidth=0.9, capsize=st["capsize"], zorder=3)
+        ytop = max(ytop, float(np.nanmax(top + np.nan_to_num(e))) if nc else 0)
         if o.get("value_labels"):
-            fmt = o.get("value_fmt") or "{:.4g}"
-            for xi, yi, ei in zip(xx, y, e if e is not None else [0] * len(y)):
-                if np.isfinite(yi):
+            for xi, yi, ti, ei in zip(xx, y, top, e):
+                if yi == 0:
+                    continue
+                if stacked:  # số nằm giữa từng đoạn, chỉ ghi khi đoạn đủ cao
+                    if yi >= 0.06 * (100 if mode == "stack100" else max(ytop, 1e-12)):
+                        ax.text(xi, ti - yi / 2, fmt.format(yi), ha="center", va="center", fontsize=fs, zorder=4)
+                else:
                     ax.text(xi, yi + (ei if np.isfinite(ei) else 0) + 0.012 * max(ytop, 1e-12), fmt.format(yi),
-                            ha="center", va="bottom", fontsize=plt.rcParams["font.size"] - 1)
+                            ha="center", va="bottom", fontsize=fs)
+        if stacked:
+            bottom = bottom + y
+    if stacked and o.get("total_labels") and mode == "stack":
+        tf = o.get("value_fmt") or "{:.4g}"
+        for xi, t in zip(pos, bottom):
+            ax.text(xi, t + 0.015 * max(ytop, 1e-12), tf.format(t), ha="center", va="bottom", fontsize=fs, fontweight="bold")
     ax.set_xticks(pos, cats)
     rot = float(o.get("rotate_x") or 0)
     if rot:
@@ -464,8 +495,14 @@ def _plot_columns(G, ax, items, styles):
             t.set_rotation(rot)
             t.set_ha("right")
     ax.xaxis.set_minor_locator(NullLocator())
-    ax.set_xlim(-0.6, len(cats) - 0.4)
-    ax.set_ylim(0, ytop * (1.15 if o.get("value_labels") else 1.05) if ytop > 0 else 1)
+    ax.set_xlim(-0.6, nc - 0.4)
+    if mode == "stack100":
+        ax.set_ylim(0, 100)
+    else:
+        room = 1.15 if (o.get("value_labels") and not stacked) or o.get("total_labels") else 1.05
+        ax.set_ylim(0, ytop * room if ytop > 0 else 1)
+    if stacked:  # chú giải theo thứ tự từ trên xuống, khớp với chồng cột
+        handles = handles[::-1]
     return None, handles
 
 
@@ -711,6 +748,8 @@ def _draw(G, ax):
     # nhãn trục tự động lấy từ Long Name (Units)
     dx = _axis_label(items[0]["mx"]) if (generic and items) else None
     dy = _default_ylabel(items, series) if (generic and items) else None
+    if kind == "column" and (G.get("opts") or {}).get("mode") == "stack100":
+        dy = "Percentage (%)"
     if kind == "xps":
         dx = "Binding energy (eV)"
         dy = "Intensity (a.u.)"
@@ -832,8 +871,11 @@ def render_graph(graph_json: str, dpi: float = 110) -> str:
             add("title", ax.title.get_window_extent(r), 4)
         if leg is not None:
             add("legend", leg.get_window_extent(r), 3)
-            for k, t in enumerate(leg.get_texts()):
-                add("legend_entry", t.get_window_extent(r), 4, index=k, text=t.get_text())
+            texts_ = leg.get_texts()
+            rev_ = G.get("kind") == "column" and (G.get("opts") or {}).get("mode") in ("stack", "stack100")
+            for k, t in enumerate(texts_):
+                kk = (len(texts_) - 1 - k) if rev_ else k  # cột xếp chồng: chú giải đảo thứ tự
+                add("legend_entry", t.get_window_extent(r), 4, index=kk, text=t.get_text())
         for t in ax.texts:
             if t.get_gid():
                 add("text", t.get_window_extent(r), 5, id=t.get_gid())

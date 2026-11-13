@@ -195,6 +195,7 @@ function aoaToCols(aoa, { skip = 0, nhdr = "auto", dec = "." } = {}) {
 // Dữ liệu kiểu X1 Y1 X2 Y2…: các cột số trùng Long Name với cột X đầu tiên (vd. "Temperature" lặp lại),
 // hoặc có tên dạng x, x1, x_2… được đặt làm X — mỗi Y sau đó dùng cột X gần nhất bên trái.
 function autoXY(cols) {
+  cols.forEach((c, i) => { if (i && c.desig === "Y" && colIsNumeric(c) && ["Y", "yEr"].includes(cols[i - 1].desig) && /^\s*(sd|s\.d\.|std|stdev|se|sem|s\.e\.|err|error|±|\+\/-)\b/i.test(String(c.lname || "") + " ")) c.desig = "yEr"; });
   const fx = cols.find(c => c.desig === "X" && colIsNumeric(c)); if (!fx) return;
   const norm = s => String(s || "").trim().toLowerCase();
   const key = norm(fx.lname), unit = norm(fx.units);
@@ -353,7 +354,10 @@ const MENUS = () => [
     [I18("Xoá đối tượng đang chọn"), () => deleteSelected(), "Del"],
   ]],
   ["Plot", [
-    ...["2D", I18("Vật liệu"), I18("Điện hoá"), I18("Thống kê")].flatMap(gp => [["#" + gp], ...KINDS.filter(k => k.group === gp).map(k => [k.name, () => plotCmd(k.id)])]),
+    ...["2D", I18("Vật liệu"), I18("Điện hoá"), I18("Thống kê")].flatMap(gp => [["#" + gp], ...KINDS.filter(k => k.group === gp).flatMap(k => k.id !== "column" ? [[k.name, () => plotCmd(k.id)]] : [
+      [I18("Column – nhiều cột cạnh nhau (grouped)"), () => plotCmd("column", null, { opts: { mode: "group" } })],
+      [I18("Column – xếp chồng (stacked)"), () => plotCmd("column", null, { opts: { mode: "stack" } })],
+      [I18("Column – xếp chồng 100 %"), () => plotCmd("column", null, { opts: { mode: "stack100" } })]])]),
   ]],
   ["Column", [
     [I18("Đặt làm X"), () => setDesig("X")], [I18("Đặt làm Y"), () => setDesig("Y")], [I18("Đặt làm Y Error"), () => setDesig("yEr")],
@@ -752,6 +756,8 @@ function newBookCmd() { let b; mutate(() => { b = newBook(); P.open.push(b.id); 
 const SAMPLES = [
   ["photocatalysis_demo.csv", I18("Phân huỷ quang xúc tác (C/C₀)"), "linesymbol", { palette: "paper", xaxis: { label: "Time (min)", min: -40, max: 130, step: 30 }, yaxis: { label: "C/C$_0$", min: 0, max: 1.25 }, legend: { loc: [0.6, 0.8] } }],
   ["her_rate_demo.csv", I18("Tốc độ sinh H₂ (cột gradient)"), "column", { opts: { gradient: "#82D0FF,#BC75FF", value_labels: true, value_fmt: "{:.3g}", rotate_x: 30 }, yaxis: { label: "H$_2$ evolution (mmol h$^{-1}$ g$^{-1}$)", min: 0, max: 16 }, legend: { show: false } }],
+  ["grouped_column_demo.csv", I18("Cột nhóm (nhiều cột tại mỗi x)"), "column", { opts: { mode: "group" }, xaxis: { label: "" }, yaxis: { label: "Conversion (%)", min: 0, max: 120 }, palette: "seq_blue", legend: { loc: [0.03, 0.98], ncol: 3 } }],
+  ["stacked_column_demo.csv", I18("Cột xếp chồng (Faradaic efficiency)"), "column", { opts: { mode: "stack", total_labels: true, value_labels: true, value_fmt: "{:.0f}" }, xaxis: { label: "Potential (V vs RHE)" }, yaxis: { label: "Faradaic efficiency (%)", min: 0, max: 112 }, legend: { loc: [1.02, 1.0] } }],
   ["xrd_demo.csv", I18("XRD xếp chồng"), "spectra", {}],
   ["multi_xy_demo.csv", I18("Nhiều cặp X–Y (X1Y1, X2Y2, X3Y3)"), "linesymbol", { xaxis: { label: "Temperature (°C)" }, yaxis: { label: "Weight (%)" }, legend: { loc: [0.62, 0.95] } }],
   ["lsv_oer_demo.csv", "LSV OER", "lsv", { opts: { reaction: "OER", ref: "Hg/HgO", pH: 14, current_unit: "mA", area: 0.196, R: 2.5 } }],
@@ -776,7 +782,7 @@ async function openSample(i) {
   if (!ready) { status(I18("Python đang tải — chờ chấm xanh 'Sẵn sàng' ở góc trên rồi mở lại")); return; }
   try {
     const text = await (await fetch("examples/" + file)).text();
-    const { cols } = aoaToCols(textToAoa(text, "auto", "."), { nhdr: file === "multi_xy_demo.csv" ? 2 : 1 });
+    const { cols } = aoaToCols(textToAoa(text, "auto", "."), { nhdr: ["multi_xy_demo.csv", "stacked_column_demo.csv"].includes(file) ? 2 : 1 });
     let book;
     mutate(() => { book = newBook(file.replace(/\.csv$/, ""), cols); }, { books: [], rebuild: false });
     syncBook(book);
@@ -815,6 +821,7 @@ function plotCmd(kind, book, extra = {}, name) {
   if (!series.length) { status(I18("Chưa có cột Y nào: hãy chọn cột (bấm tiêu đề cột) hoặc đặt kiểu cột Y")); return; }
   const lc = labelCol(book);
   const opts = { ...(DEFAULT_OPTS[kind] || {}), ...(extra.opts || {}) };
+  if (kind === "column" && /^stack/.test(opts.mode || "") && !(extra.legend && extra.legend.loc)) extra = { ...extra, legend: { ...(extra.legend || {}), loc: [1.02, 1.0] } };  // cột chồng: chú giải ra ngoài bên phải
   if (lc && ["pca", "heatmap", "volcano"].includes(kind)) opts.label_col = lc;
   let g;
   mutate(() => {
@@ -1303,7 +1310,9 @@ const KIND_OPTS = {
     { k: "fill_alpha", label: I18("Độ đậm vùng tô (0–1)"), t: "number", step: 0.05, ph: I18("0.55 gradient / 0.35 đặc") },
     { k: "hatch", label: I18("Kiểu gạch (khi chọn hatch)"), t: "sel", opts: HATCHES.slice(1) },
     { k: "hide_y", label: I18("Ẩn số trục Y (a.u.)"), t: "bool" }],
-  column: [{ k: "gradient", label: I18("Tô gradient (trên, dưới)"), t: "gradient" }, { k: "value_labels", label: I18("Ghi giá trị trên cột"), t: "bool" },
+  column: [{ k: "mode", label: I18("Kiểu cột"), t: "sel", opts: [["group", I18("nhiều cột cạnh nhau tại mỗi x (grouped)")], ["stack", I18("xếp chồng (stacked)")], ["stack100", I18("xếp chồng 100 %")]] },
+    { k: "total_labels", label: I18("Ghi tổng trên đỉnh cột chồng"), t: "bool" },
+    { k: "gradient", label: I18("Tô gradient (trên, dưới)"), t: "gradient", help: I18("Chỉ dùng cho cột thường/cạnh nhau") }, { k: "value_labels", label: I18("Ghi giá trị trên cột"), t: "bool" },
     { k: "value_fmt", label: I18("Định dạng số"), t: "text", ph: "{:.4g}", help: I18("{:.2f} = 2 chữ số thập phân") }, { k: "rotate_x", label: I18("Xoay nhãn trục X (độ)"), t: "number" },
     { k: "width", label: I18("Độ rộng nhóm cột (0–1)"), t: "number", step: 0.05, ph: "0.8" }, { k: "edgecolor", label: I18("Màu viền cột"), t: "color", auto: true }],
   spectra: [{ k: "kind", label: I18("Loại phổ"), t: "sel", opts: [["xrd", I18("XRD (2θ)")], ["raman", "Raman"], ["ftir", I18("FTIR (đảo trục)")], ["xps", I18("XPS (đảo trục)")], ["uvvis", "UV-Vis"], ["pl", "PL"]] },
